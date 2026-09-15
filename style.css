@@ -1,0 +1,297 @@
+:root {
+  --ink: #1B1F2A;
+  --surface: #242938;
+  --surface-alt: #2D3244;
+  --parchment: #EDE6D6;
+  --muted: #9CA3B8;
+  --amber: #E3A83B;
+  --teal: #5B8C85;
+  --danger: #D88066;
+  --radius: 4px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.5;
+}
+
+h1, h2, h3 {
+  font-family: 'Spectral', serif;
+  font-weight: 600;
+  margin: 0;
+}
+
+.is-hidden { display: none !important; }
+
+/* Cabecera */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--surface-alt);
+}
+
+.brand {
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+.tabs { display: flex; gap: 0.5rem; }
+
+.tab {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tab.is-active {
+  color: var(--ink);
+  background: var(--amber);
+}
+
+/* Layout general */
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+/* Inputs y botones */
+
+.search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  color: var(--parchment);
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.search-input:focus { outline: 2px solid var(--amber); }
+
+.btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btn--primary { background: var(--amber); color: var(--ink); }
+.btn--secondary { background: var(--surface-alt); color: var(--parchment); border-color: var(--muted); }
+.btn--icon {
+  width: 2.2rem; height: 2.2rem;
+  background: var(--surface-alt);
+  color: var(--parchment);
+  font-size: 1.1rem;
+  border-radius: 50%;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.link-btn--danger { color: var(--danger); }
+
+/* Lista de canciones */
+
+.song-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.song-item {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.song-item:hover { border-color: var(--amber); }
+.song-item__title { font-family: 'Spectral', serif; font-size: 1.05rem; color: var(--parchment); }
+.song-item__meta { font-size: 0.8rem; color: var(--muted); }
+
+.empty-msg { color: var(--muted); font-size: 0.9rem; }
+
+/* Vista de canción */
+
+.song-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0;
+  position: relative;
+}
+.song-artist { color: var(--muted); margin: 0.2rem 0 0; }
+
+.song-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.transpose-controls { display: flex; align-items: center; gap: 0.6rem; }
+.semitone-label { min-width: 5rem; text-align: center; font-size: 0.9rem; color: var(--amber); }
+
+.notation-toggle { display: flex; border: 1px solid var(--surface-alt); border-radius: var(--radius); overflow: hidden; }
+.notation-toggle button {
+  background: var(--surface);
+  color: var(--muted);
+  border: none;
+  padding: 0.5rem 0.8rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.notation-toggle button.is-active { background: var(--teal); color: var(--ink); }
+
+.song-lyrics {
+  font-size: 1.05rem;
+  white-space: pre-wrap;
+}
+.line { padding: 0.15rem 0; }
+.line--empty { height: 0.9rem; }
+.chord {
+  color: var(--amber);
+  font-weight: 600;
+  margin-right: 0.15em;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 2.5rem;
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  border-radius: var(--radius);
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+}
+.dropdown-menu button {
+  background: none;
+  border: none;
+  color: var(--parchment);
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+}
+.dropdown-menu button:hover { background: var(--surface-alt); }
+
+/* Repertorios */
+
+.repertoire-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+.repertoire-item {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.repertoire-item:hover { border-color: var(--teal); }
+.repertoire-item__name { font-family: 'Spectral', serif; }
+.repertoire-item__meta { color: var(--muted); font-size: 0.8rem; }
+
+.repertoire-detail {
+  border-top: 1px solid var(--surface-alt);
+  padding-top: 1.25rem;
+}
+
+.repertoire-songs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.repertoire-song {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+}
+.repertoire-song em { color: var(--muted); font-style: normal; }
+
+/* Selector de canciones (desplegable con buscador) */
+
+.song-picker {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8vh;
+  z-index: 10;
+}
+.song-picker__panel {
+  background: var(--surface);
+  border: 1px solid var(--surface-alt);
+  border-radius: var(--radius);
+  width: min(480px, 90vw);
+  padding: 1rem;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+.song-picker__header { display: flex; align-items: center; gap: 0.75rem; }
+.song-picker__header .search-input { margin-bottom: 0; }
+.song-picker__results { overflow-y: auto; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.picker-item {
+  text-align: left;
+  background: var(--surface-alt);
+  border: none;
+  color: var(--parchment);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.picker-item:hover { background: var(--teal); color: var(--ink); }
+.picker-item em { color: var(--muted); font-style: normal; }
+.picker-item:hover em { color: var(--ink); }
+
+@media (max-width: 480px) {
+  .song-header { flex-direction: column; }
+  .song-controls { flex-direction: column; align-items: stretch; }
+}
