@@ -1,94 +1,937 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi cancionero</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <title>CifraChord Studio - Acordes y Repertorios</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .chord-text {
+      font-family: 'JetBrains Mono', monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .chord-tag {
+      color: #ea580c;
+      font-weight: 700;
+      display: inline-block;
+      cursor: pointer;
+      user-select: none;
+    }
+    .dark .chord-tag {
+      color: #fb923c;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 3px;
+    }
+  </style>
 </head>
-<body>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col md:flex-row transition-colors duration-200">
 
-  <header class="topbar">
-    <h1 class="brand">Mi cancionero</h1>
-    <nav class="tabs">
-      <button class="tab is-active" data-view="view-list">Canciones</button>
-      <button class="tab" data-view="view-repertoires">Repertorios</button>
-    </nav>
+  <!-- Mobile Header -->
+  <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
+    <div class="flex items-center space-x-2">
+      <i class="fa-solid fa-guitar text-brand-600 text-xl"></i>
+      <span class="font-bold text-lg bg-gradient-to-r from-brand-600 to-amber-500 bg-clip-text text-transparent">CifraChord</span>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button id="theme-toggle-mobile" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700">
+        <i class="fa-solid fa-moon dark:hidden"></i>
+        <i class="fa-solid fa-sun hidden dark:inline"></i>
+      </button>
+    </div>
   </header>
 
-  <main>
+  <!-- Sidebar Navigation (Desktop) -->
+  <aside class="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 space-y-6">
+    <div class="flex items-center space-x-3 px-2">
+      <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+        <i class="fa-solid fa-guitar text-xl"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">CifraChord</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Tus acordes en vivo</p>
+      </div>
+    </div>
 
-    <!-- Vista: lista de canciones -->
-    <section id="view-list" class="view">
-      <input type="search" id="song-search" class="search-input" placeholder="Buscar canción o artista…">
-      <div id="song-list" class="song-list"></div>
-    </section>
+    <nav class="space-y-1 flex-1">
+      <button onclick="switchView('library')" id="nav-library" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+        <i class="fa-solid fa-music w-5"></i>
+        <span>Cancionero</span>
+      </button>
+      <button onclick="switchView('setlists')" id="nav-setlists" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+        <i class="fa-solid fa-list-check w-5"></i>
+        <span>Repertorios</span>
+      </button>
+      <button onclick="openSongModal()" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-brand-600 dark:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition">
+        <i class="fa-solid fa-circle-plus w-5"></i>
+        <span>Nueva Canción</span>
+      </button>
+    </nav>
 
-    <!-- Vista: canción -->
-    <section id="view-song" class="view is-hidden">
-      <button id="back-to-list" class="link-btn">← Volver a canciones</button>
+    <!-- Settings & Dark Mode -->
+    <div class="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+      <button id="theme-toggle" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition text-sm">
+        <span class="flex items-center space-x-2">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:inline"></i>
+          <span>Modo Oscuro</span>
+        </span>
+      </button>
+      <button onclick="exportData()" class="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition text-sm">
+        <i class="fa-solid fa-download w-4"></i>
+        <span>Respaldar Datos</span>
+      </button>
+      <label class="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition text-sm cursor-pointer">
+        <i class="fa-solid fa-upload w-4"></i>
+        <span>Restaurar Copia</span>
+        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+      </label>
+    </div>
+  </aside>
 
-      <div class="song-header">
+  <main class="flex-1 flex flex-col h-full overflow-hidden pb-16 md:pb-0">
+
+    <!-- VIEW 1: SONG LIBRARY -->
+    <section id="view-library" class="view-panel p-4 md:p-8 overflow-y-auto flex-1 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 id="song-title"></h2>
-          <p id="song-artist" class="song-artist"></p>
+          <h2 class="text-2xl font-bold">Biblioteca de Canciones</h2>
+          <p class="text-slate-500 dark:text-slate-400 text-sm">Gestiona tus temas, tonos y letras</p>
         </div>
-        <button id="add-to-repertoire-btn" class="btn btn--secondary">+ Añadir a repertorio</button>
-        <div id="add-to-repertoire-menu" class="dropdown-menu is-hidden"></div>
+        <button onclick="openSongModal()" class="flex items-center justify-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl shadow-md transition font-medium">
+          <i class="fa-solid fa-plus"></i>
+          <span>Añadir Canción</span>
+        </button>
       </div>
 
-      <div class="song-controls">
-        <div class="transpose-controls">
-          <button id="transpose-down" class="btn btn--icon" aria-label="Bajar un semitono">−</button>
-          <span id="song-semitone-label" class="semitone-label">Tono original</span>
-          <button id="transpose-up" class="btn btn--icon" aria-label="Subir un semitono">+</button>
-          <button id="transpose-reset" class="link-btn">Restablecer</button>
-        </div>
-
-        <div class="notation-toggle">
-          <button data-notation="caged" class="is-active">A B C…</button>
-          <button data-notation="europea">Do Re Mi…</button>
-        </div>
+      <!-- Search Bar -->
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input type="text" id="search-input" placeholder="Buscar por título, artista o género..." 
+          class="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none transition shadow-sm">
       </div>
 
-      <div id="song-lyrics" class="song-lyrics"></div>
+      <!-- Song List Grid -->
+      <div id="song-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Dynamic content -->
+      </div>
     </section>
 
-    <!-- Vista: repertorios -->
-    <section id="view-repertoires" class="view is-hidden">
-      <div class="section-header">
-        <h2>Tus repertorios</h2>
-        <button id="new-repertoire-btn" class="btn btn--primary">+ Nuevo repertorio</button>
-      </div>
-      <div id="repertoire-list" class="repertoire-list"></div>
-
-      <div id="repertoire-detail" class="repertoire-detail is-hidden">
-        <div class="section-header">
-          <h3 id="repertoire-name"></h3>
-          <button id="add-song-to-repertoire-btn" class="btn btn--secondary">+ Añadir canción</button>
+    <!-- VIEW 2: SONG VIEWER WITH NOTATION SWITCH & TRANSPOSITION -->
+    <section id="view-song" class="view-panel hidden flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+      <!-- Controls Header -->
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-md sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <button onclick="switchView('library')" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">
+            <i class="fa-solid fa-arrow-left text-lg"></i>
+          </button>
+          <div>
+            <h3 id="viewer-title" class="font-bold text-lg leading-tight truncate max-w-[180px] sm:max-w-xs">Título</h3>
+            <p id="viewer-artist" class="text-xs text-slate-500 dark:text-slate-400">Artista</p>
+          </div>
         </div>
-        <ul id="repertoire-songs" class="repertoire-songs"></ul>
+
+        <!-- Toolbar Controls -->
+        <div class="flex items-center flex-wrap gap-2 text-sm">
+          
+          <!-- Notation Toggle (CAGED vs European) -->
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
+            <button id="notation-btn" onclick="toggleNotationSystem()" class="px-2.5 py-1 text-xs font-bold bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 rounded hover:bg-brand-100 transition" title="Cambiar Notación Musical">
+              <i class="fa-solid fa-globe mr-1"></i><span id="notation-label">CAGED (C-D-E)</span>
+            </button>
+          </div>
+
+          <!-- Transpose Control -->
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
+            <span class="text-xs font-semibold px-2 text-slate-400">Tono:</span>
+            <button onclick="transpose(-1)" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-bold">-1</button>
+            <span id="current-key-display" class="px-2.5 font-mono font-bold text-brand-600 dark:text-brand-400 min-w-[36px] text-center">C</span>
+            <button onclick="transpose(1)" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-bold">+1</button>
+            <button onclick="resetTranspose()" class="ml-1 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs" title="Restablecer Tono">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+
+          <!-- Font Size Control -->
+          <div class="hidden sm:flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
+            <button onclick="adjustFontSize(-1)" class="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"><i class="fa-solid fa-minus text-xs"></i></button>
+            <span class="px-2 text-xs font-medium text-slate-500">Texto</span>
+            <button onclick="adjustFontSize(1)" class="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"><i class="fa-solid fa-plus text-xs"></i></button>
+          </div>
+
+          <!-- Auto-Scroll Toggle -->
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1 space-x-1">
+            <button id="autoscroll-btn" onclick="toggleAutoScroll()" class="flex items-center space-x-1 px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-semibold">
+              <i class="fa-solid fa-play text-brand-600" id="autoscroll-icon"></i>
+              <span id="autoscroll-label">Scroll</span>
+            </button>
+            <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-16 h-1 accent-brand-500 cursor-pointer">
+          </div>
+
+          <!-- Edit Action -->
+          <button onclick="editCurrentSong()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300" title="Editar canción">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Song Content View Container -->
+      <div id="viewer-scroll-container" class="flex-1 overflow-y-auto p-4 sm:p-8 bg-white dark:bg-slate-900">
+        <div id="viewer-content" class="max-w-3xl mx-auto chord-text text-base leading-relaxed">
+          <!-- Transposed lyrics and chords render here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: SETLISTS & REPERTOIRES -->
+    <section id="view-setlists" class="view-panel hidden p-4 md:p-8 overflow-y-auto flex-1 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold">Repertorios y Actuaciones</h2>
+          <p class="text-slate-500 dark:text-slate-400 text-sm">Organiza tus listas de temas para conciertos o ensayos</p>
+        </div>
+        <button onclick="openSetlistModal()" class="flex items-center justify-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl shadow-md transition font-medium">
+          <i class="fa-solid fa-folder-plus"></i>
+          <span>Nuevo Repertorio</span>
+        </button>
+      </div>
+
+      <div id="setlists-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Setlists rendered dynamically -->
       </div>
     </section>
 
   </main>
 
-  <!-- Desplegable con buscador para añadir canciones a un repertorio -->
-  <div id="song-picker" class="song-picker is-hidden">
-    <div class="song-picker__panel">
-      <div class="song-picker__header">
-        <input type="search" id="song-picker-search" class="search-input" placeholder="Buscar canción…">
-        <button id="song-picker-close" class="link-btn">Cerrar</button>
+  <!-- Mobile Navigation Bar -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around p-2 z-30">
+    <button onclick="switchView('library')" id="mobile-nav-library" class="flex flex-col items-center py-1 px-3 text-slate-500 dark:text-slate-400 text-xs font-medium">
+      <i class="fa-solid fa-music text-base mb-1"></i>
+      <span>Canciones</span>
+    </button>
+    <button onclick="switchView('setlists')" id="mobile-nav-setlists" class="flex flex-col items-center py-1 px-3 text-slate-500 dark:text-slate-400 text-xs font-medium">
+      <i class="fa-solid fa-list-check text-base mb-1"></i>
+      <span>Repertorios</span>
+    </button>
+    <button onclick="openSongModal()" class="flex flex-col items-center py-1 px-3 text-brand-600 dark:text-brand-500 text-xs font-medium">
+      <i class="fa-solid fa-circle-plus text-base mb-1"></i>
+      <span>Crear</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: ADD / EDIT SONG -->
+  <div id="song-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+        <h3 id="modal-song-title" class="font-bold text-lg">Nueva Canción</h3>
+        <button onclick="closeSongModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
       </div>
-      <div id="song-picker-results" class="song-picker__results"></div>
+      <form id="song-form" onsubmit="saveSong(event)" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="song-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Título de la canción</label>
+            <input type="text" id="input-song-title" required placeholder="Ej: De Música Ligera" 
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Artista / Banda</label>
+            <input type="text" id="input-song-artist" required placeholder="Ej: Soda Stereo" 
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Tono Original (Opcional)</label>
+            <input type="text" id="input-song-key" placeholder="Ej: Bm o Si m" 
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Género / Etiqueta</label>
+            <input type="text" id="input-song-genre" placeholder="Ej: Rock, Pop, Acústico" 
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs font-semibold text-slate-500 uppercase">Letra y Acordes</label>
+            <span class="text-xs text-slate-400">Acordes entre corchetes: <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded text-brand-600">[C]</code> o <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded text-brand-600">[Do]</code></span>
+          </div>
+          <textarea id="input-song-content" rows="10" required placeholder="Ella durmió [Bm] en el calor de las [G] masas&#10;Y yo desperté [D] queriendo soñarla [A]" 
+            class="w-full p-3 font-mono text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button type="button" onclick="closeSongModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-sm">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm shadow">Guardar Canción</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <script src="js/chords.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/app.js"></script>
+  <!-- MODAL: ADD SETLIST -->
+  <div id="setlist-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+        <h3 class="font-bold text-lg">Crear Nuevo Repertorio</h3>
+        <button onclick="closeSetlistModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="setlist-form" onsubmit="saveSetlist(event)" class="p-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre del Repertorio</label>
+          <input type="text" id="input-setlist-name" required placeholder="Ej: Show Acústico Bar Madrid" 
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button type="button" onclick="closeSetlistModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-sm">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm shadow">Crear Lista</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // SAMPLE DATA
+    const sampleSongs = [
+      {
+        id: "s1",
+        title: "De Música Ligera",
+        artist: "Soda Stereo",
+        key: "Bm",
+        genre: "Rock Español",
+        content: "[Intro]\n[Bm]  [G]  [D]  [A]\n\n[Verso 1]\nElla durmió [Bm] en el calor de las [G] masas\nY yo desperté [D] queriendo soñarla [A]\nAlgún tiempo atrás [Bm] pensé en escribirle [G]\nPero no aprendí [D] a las primeras lu[A]ces\n\n[Coro]\nDe música li[Bm]gera [G]  [D]  [A]\nNo quedará más [Bm] nada [G]  [D]  [A]\nNada más [Bm]  [G]  [D]  [A]"
+      },
+      {
+        id: "s2",
+        title: "La Flaca",
+        artist: "Jarabe de Palo",
+        key: "Am",
+        genre: "Rock",
+        content: "[Intro]\n[Am]  [E7]  [Dm]  [Am]\n\n[Verso]\nEn la vida co[Am]nocí mujer igual a la [E7] Flaca\n100 libras de [Dm] piel y huesos, 40 kilos de [Am] salsa\nY en la cara dos [Am] soles que sin mirar te [E7] queman\nCon los que se de[Dm]rrite hasta el santo más [Am] firme\n\n[Coro]\nPor un beso de la [C] Flaca daría lo que [G] fuera\nPor un beso de e[Dm]lla aunque sólo uno [Am] fuera"
+      }
+    ];
+
+    const sampleSetlists = [
+      {
+        id: "set1",
+        name: "Concierto Acústico Bar",
+        songIds: ["s1", "s2"]
+      }
+    ];
+
+    // APPLICATION STATE
+    let songs = [];
+    let setlists = [];
+    let currentSong = null;
+    let currentSemitones = 0;
+    let currentNotation = 'CAGED'; // 'CAGED' or 'EUROPEAN'
+    let currentFontSize = 16;
+    let isAutoScrolling = false;
+    let scrollInterval = null;
+
+    // CHROMATIC SCALES
+    const cagedSharps    = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const cagedFlats     = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    const europeanSharps = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+    const europeanFlats  = ['Do', 'Dob', 'Re', 'Reb', 'Mi', 'Fa', 'Fab', 'Sol', 'Solb', 'La', 'Lab', 'Si'];
+
+    // INITIALIZATION
+    window.onload = function() {
+      loadStoredData();
+      initTheme();
+      renderSongLibrary();
+      renderSetlists();
+      setupSearch();
+    };
+
+    // STORAGE HANDLERS
+    function loadStoredData() {
+      const storedSongs = localStorage.getItem('cifrachord_songs');
+      const storedSetlists = localStorage.getItem('cifrachord_setlists');
+
+      songs = storedSongs ? JSON.parse(storedSongs) : sampleSongs;
+      setlists = storedSetlists ? JSON.parse(storedSetlists) : sampleSetlists;
+
+      if (!storedSongs) saveData();
+    }
+
+    function saveData() {
+      localStorage.setItem('cifrachord_songs', JSON.stringify(songs));
+      localStorage.setItem('cifrachord_setlists', JSON.stringify(setlists));
+    }
+
+    // THEME HANDLING
+    function initTheme() {
+      const isDark = localStorage.getItem('cifrachord_theme') === 'dark' ||
+        (!('cifrachord_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+      if (isDark) document.documentElement.classList.add('dark');
+
+      const toggleBtns = [document.getElementById('theme-toggle'), document.getElementById('theme-toggle-mobile')];
+      toggleBtns.forEach(btn => {
+        if(btn) btn.onclick = () => {
+          document.documentElement.classList.toggle('dark');
+          const currentDark = document.documentElement.classList.contains('dark');
+          localStorage.setItem('cifrachord_theme', currentDark ? 'dark' : 'light');
+        };
+      });
+    }
+
+    // VIEW ROUTING
+    function switchView(viewName) {
+      document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-100', 'dark:bg-slate-700/60', 'text-brand-600', 'dark:text-brand-500');
+      });
+      const activeNav = document.getElementById(`nav-${viewName}`);
+      if(activeNav) activeNav.classList.add('bg-slate-100', 'dark:bg-slate-700/60', 'text-brand-600', 'dark:text-brand-500');
+
+      if(viewName !== 'song') stopAutoScroll();
+    }
+
+    // LIBRARY RENDERER
+    function renderSongLibrary(filteredSongs = null) {
+      const grid = document.getElementById('song-grid');
+      const list = filteredSongs || songs;
+
+      if(list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-400">
+            <i class="fa-solid fa-music text-4xl mb-3"></i>
+            <p>No se encontraron canciones.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = list.map(song => `
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/70 hover:shadow-lg transition cursor-pointer flex flex-col justify-between group"
+             onclick="openSongViewer('${song.id}')">
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
+                Tono: ${song.key || 'N/A'}
+              </span>
+              <div class="opacity-0 group-hover:opacity-100 transition space-x-1" onclick="event.stopPropagation()">
+                <button onclick="editSong('${song.id}')" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="deleteSong('${song.id}')" class="p-1 text-red-400 hover:text-red-600">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <h3 class="font-bold text-lg group-hover:text-brand-600 transition truncate">${escapeHtml(song.title)}</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400">${escapeHtml(song.artist)}</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex justify-between items-center text-xs text-slate-400">
+            <span>${song.genre || 'General'}</span>
+            <i class="fa-solid fa-chevron-right group-hover:translate-x-1 transition"></i>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // SEARCH LOGIC FOR LIBRARY
+    function setupSearch() {
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = songs.filter(s => 
+          s.title.toLowerCase().includes(query) || 
+          s.artist.toLowerCase().includes(query) ||
+          (s.genre && s.genre.toLowerCase().includes(query))
+        );
+        renderSongLibrary(filtered);
+      });
+    }
+
+    // HELPER: PARSE SINGLE ROOT NOTE (CAGED OR EUROPEAN) TO SEMITONE INDEX (0-11)
+    function noteToSemitoneIndex(noteStr) {
+      // European Notes check
+      let idx = europeanSharps.indexOf(noteStr);
+      if (idx !== -1) return { index: idx, isFlat: false };
+      idx = europeanFlats.indexOf(noteStr);
+      if (idx !== -1) return { index: idx, isFlat: true };
+
+      // CAGED Notes check
+      idx = cagedSharps.indexOf(noteStr);
+      if (idx !== -1) return { index: idx, isFlat: false };
+      idx = cagedFlats.indexOf(noteStr);
+      if (idx !== -1) return { index: idx, isFlat: true };
+
+      return null;
+    }
+
+    // CHORD TRANSPOSITION + NOTATION TRANSLATOR LOGIC
+    function processChordToken(chordStr, semitones, targetNotation) {
+      if (!chordStr) return chordStr;
+
+      // Handle slashed chords like C/G or Do/Sol
+      if (chordStr.includes('/')) {
+        const parts = chordStr.split('/');
+        return processChordToken(parts[0], semitones, targetNotation) + '/' + processChordToken(parts[1], semitones, targetNotation);
+      }
+
+      // Regex matching European (Do, Re, Mi, Fa, Sol, La, Si) or CAGED (A-G)
+      const regex = /^(Do|Re|Mi|Fa|Sol|La|Si|[A-G])(#|b|b)?(.*)$/i;
+      const match = chordStr.match(regex);
+      if (!match) return chordStr;
+
+      let rootNoteName = match[1];
+      // Normalize casing (e.g., "do" -> "Do")
+      rootNoteName = rootNoteName.charAt(0).toUpperCase() + rootNoteName.slice(1).toLowerCase();
+      const alteration = match[2] || '';
+      const extension = match[3] || '';
+
+      const fullRoot = rootNoteName + alteration;
+      const parsedNote = noteToSemitoneIndex(fullRoot);
+
+      if (!parsedNote) return chordStr;
+
+      // Calculate new transposed semitone index
+      let newIndex = (parsedNote.index + semitones) % 12;
+      if (newIndex < 0) newIndex += 12;
+
+      const isFlat = parsedNote.isFlat || alteration === 'b';
+
+      // Output according to target notation
+      let newRootNote = '';
+      if (targetNotation === 'EUROPEAN') {
+        newRootNote = isFlat ? europeanFlats[newIndex] : europeanSharps[newIndex];
+      } else {
+        newRootNote = isFlat ? cagedFlats[newIndex] : cagedSharps[newIndex];
+      }
+
+      return newRootNote + extension;
+    }
+
+    // TOGGLE NOTATION SYSTEM BUTTON HANDLER
+    function toggleNotationSystem() {
+      currentNotation = (currentNotation === 'CAGED') ? 'EUROPEAN' : 'CAGED';
+      
+      const label = document.getElementById('notation-label');
+      if (label) {
+        label.innerText = currentNotation === 'CAGED' ? 'CAGED (C-D-E)' : 'Latina (Do-Re-Mi)';
+      }
+
+      updateViewerDisplay();
+    }
+
+    // PARSE AND DISPLAY CHORDS IN LYRICS
+    function renderTransposedContent(content, semitones, notation) {
+      // Replace [Chord] tags
+      const parsed = content.replace(/\[([^\]]+)\]/g, (match, chord) => {
+        const processed = processChordToken(chord.trim(), semitones, notation);
+        return `<span class="chord-tag">[${processed}]</span>`;
+      });
+      return parsed;
+    }
+
+    // SONG VIEWER
+    function openSongViewer(songId) {
+      currentSong = songs.find(s => s.id === songId);
+      if (!currentSong) return;
+
+      currentSemitones = 0;
+      document.getElementById('viewer-title').innerText = currentSong.title;
+      document.getElementById('viewer-artist').innerText = currentSong.artist;
+
+      updateViewerDisplay();
+      switchView('song');
+    }
+
+    function updateViewerDisplay() {
+      if(!currentSong) return;
+
+      // Display Key with active notation system
+      const keyDisplay = document.getElementById('current-key-display');
+      if (currentSong.key) {
+        keyDisplay.innerText = processChordToken(currentSong.key, currentSemitones, currentNotation);
+      } else {
+        keyDisplay.innerText = (currentSemitones > 0 ? '+' : '') + currentSemitones;
+      }
+
+      const contentDiv = document.getElementById('viewer-content');
+      contentDiv.style.fontSize = `${currentFontSize}px`;
+      contentDiv.innerHTML = renderTransposedContent(escapeHtml(currentSong.content), currentSemitones, currentNotation);
+    }
+
+    function transpose(delta) {
+      currentSemitones += delta;
+      updateViewerDisplay();
+    }
+
+    function resetTranspose() {
+      currentSemitones = 0;
+      updateViewerDisplay();
+    }
+
+    function adjustFontSize(delta) {
+      currentFontSize = Math.max(12, Math.min(28, currentFontSize + delta));
+      updateViewerDisplay();
+    }
+
+    // AUTO-SCROLL LOGIC
+    function toggleAutoScroll() {
+      if(isAutoScrolling) {
+        stopAutoScroll();
+      } else {
+        startAutoScroll();
+      }
+    }
+
+    function startAutoScroll() {
+      isAutoScrolling = true;
+      document.getElementById('autoscroll-icon').className = "fa-solid fa-pause text-amber-500";
+      document.getElementById('autoscroll-label').innerText = "Pausar";
+
+      const container = document.getElementById('viewer-scroll-container');
+      
+      scrollInterval = setInterval(() => {
+        const speed = parseInt(document.getElementById('scroll-speed').value);
+        container.scrollTop += speed * 0.5;
+
+        if (container.scrollTop + container.clientHeight >= container.scrollHeight - 2) {
+          stopAutoScroll();
+        }
+      }, 50);
+    }
+
+    function stopAutoScroll() {
+      isAutoScrolling = false;
+      if (scrollInterval) clearInterval(scrollInterval);
+      const icon = document.getElementById('autoscroll-icon');
+      const label = document.getElementById('autoscroll-label');
+      if (icon) icon.className = "fa-solid fa-play text-brand-600";
+      if (label) label.innerText = "Scroll";
+    }
+
+    // SONG MODAL LOGIC
+    function openSongModal(song = null) {
+      document.getElementById('song-id').value = song ? song.id : '';
+      document.getElementById('modal-song-title').innerText = song ? 'Editar Canción' : 'Nueva Canción';
+      document.getElementById('input-song-title').value = song ? song.title : '';
+      document.getElementById('input-song-artist').value = song ? song.artist : '';
+      document.getElementById('input-song-key').value = song ? song.key : '';
+      document.getElementById('input-song-genre').value = song ? song.genre || '' : '';
+      document.getElementById('input-song-content').value = song ? song.content : '';
+
+      document.getElementById('song-modal').classList.remove('hidden');
+    }
+
+    function closeSongModal() {
+      document.getElementById('song-modal').classList.add('hidden');
+    }
+
+    function saveSong(e) {
+      e.preventDefault();
+      const id = document.getElementById('song-id').value || 's_' + Date.now();
+      const newSong = {
+        id,
+        title: document.getElementById('input-song-title').value.trim(),
+        artist: document.getElementById('input-song-artist').value.trim(),
+        key: document.getElementById('input-song-key').value.trim(),
+        genre: document.getElementById('input-song-genre').value.trim(),
+        content: document.getElementById('input-song-content').value
+      };
+
+      const index = songs.findIndex(s => s.id === id);
+      if (index > -1) {
+        songs[index] = newSong;
+      } else {
+        songs.push(newSong);
+      }
+
+      saveData();
+      renderSongLibrary();
+      renderSetlists();
+      closeSongModal();
+
+      if(currentSong && currentSong.id === id) {
+        openSongViewer(id);
+      }
+    }
+
+    function editSong(id) {
+      const song = songs.find(s => s.id === id);
+      if(song) openSongModal(song);
+    }
+
+    function editCurrentSong() {
+      if(currentSong) openSongModal(currentSong);
+    }
+
+    function deleteSong(id) {
+      if(confirm('¿Estás seguro de que deseas eliminar esta canción?')) {
+        songs = songs.filter(s => s.id !== id);
+        setlists.forEach(set => {
+          set.songIds = set.songIds.filter(sId => sId !== id);
+        });
+        saveData();
+        renderSongLibrary();
+        renderSetlists();
+      }
+    }
+
+    // SETLIST MANAGEMENT WITH SEARCHABLE DROPDOWN
+    function renderSetlists() {
+      const container = document.getElementById('setlists-container');
+      
+      if(setlists.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-400">
+            <i class="fa-solid fa-list-check text-4xl mb-3"></i>
+            <p>No has creado ningún repertorio todavía.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = setlists.map(set => {
+        const setSongs = set.songIds.map(id => songs.find(s => s.id === id)).filter(Boolean);
+        return `
+          <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-4">
+            <div class="flex justify-between items-center">
+              <div>
+                <h3 class="font-bold text-lg">${escapeHtml(set.name)}</h3>
+                <p class="text-xs text-slate-400">${setSongs.length} canciones</p>
+              </div>
+              <button onclick="deleteSetlist('${set.id}')" class="text-red-400 hover:text-red-600 p-1">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+
+            <!-- Songs List in Setlist -->
+            <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
+              ${setSongs.length === 0 ? '<p class="text-xs text-slate-400 italic py-2">Repertorio vacío. Busca y añade canciones abajo.</p>' : ''}
+              ${setSongs.map((s, idx) => `
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl text-sm">
+                  <div class="flex items-center space-x-3 truncate">
+                    <span class="text-xs font-bold text-slate-400 w-4">${idx + 1}</span>
+                    <span class="font-medium truncate cursor-pointer hover:text-brand-600" onclick="openSongViewer('${s.id}')">${escapeHtml(s.title)}</span>
+                    <span class="text-xs text-slate-400">(${s.key || 'C'})</span>
+                  </div>
+                  <button onclick="removeFromSetlist('${set.id}', '${s.id}')" class="text-slate-400 hover:text-red-500">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- SMART SEARCH INPUT TO ADD SONG TO SETLIST -->
+            <div class="pt-2 relative">
+              <label class="block text-xs font-medium text-slate-500 mb-1">Añadir canción al repertorio:</label>
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="setlist-search-input-${set.id}" 
+                  onfocus="filterSetlistDropdown('${set.id}')" 
+                  oninput="filterSetlistDropdown('${set.id}')"
+                  placeholder="Escribe para buscar canción o artista..." 
+                  class="w-full pl-8 pr-8 py-2 text-xs bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <button onclick="clearSetlistSearch('${set.id}')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <!-- Filtered Dynamic Result Dropdown -->
+              <div id="setlist-dropdown-${set.id}" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto z-40 divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Hide dropdowns when clicking outside
+      document.removeEventListener('click', handleOutsideClickSetlist);
+      document.addEventListener('click', handleOutsideClickSetlist);
+    }
+
+    function handleOutsideClickSetlist(e) {
+      if (!e.target.closest('.relative')) {
+        document.querySelectorAll('[id^="setlist-dropdown-"]').forEach(el => el.classList.add('hidden'));
+      }
+    }
+
+    function filterSetlistDropdown(setId) {
+      const input = document.getElementById(`setlist-search-input-${setId}`);
+      const dropdown = document.getElementById(`setlist-dropdown-${setId}`);
+      if (!input || !dropdown) return;
+
+      const query = input.value.toLowerCase().trim();
+      const set = setlists.find(s => s.id === setId);
+      if (!set) return;
+
+      // Filter songs not already in this setlist and matching search query
+      const availableSongs = songs.filter(s => 
+        !set.songIds.includes(s.id) &&
+        (s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query))
+      );
+
+      if (availableSongs.length === 0) {
+        dropdown.innerHTML = `
+          <div class="p-3 text-xs text-slate-400 text-center">
+            ${query ? 'No se encontraron coincidencias' : 'Todas las canciones ya están agregadas'}
+          </div>
+        `;
+      } else {
+        dropdown.innerHTML = availableSongs.map(s => `
+          <div onclick="addSongToSetlist('${setId}', '${s.id}')" 
+               class="p-2.5 hover:bg-brand-50 dark:hover:bg-slate-700/80 cursor-pointer flex justify-between items-center transition">
+            <div class="truncate pr-2">
+              <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(s.title)}</p>
+              <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(s.artist)}</p>
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-brand-600 dark:text-brand-400">
+              ${s.key || 'C'}
+            </span>
+          </div>
+        `).join('');
+      }
+
+      dropdown.classList.remove('hidden');
+    }
+
+    function clearSetlistSearch(setId) {
+      const input = document.getElementById(`setlist-search-input-${setId}`);
+      const dropdown = document.getElementById(`setlist-dropdown-${setId}`);
+      if (input) input.value = '';
+      if (dropdown) dropdown.classList.add('hidden');
+    }
+
+    function addSongToSetlist(setId, songId) {
+      const set = setlists.find(s => s.id === setId);
+      if(set && !set.songIds.includes(songId)) {
+        set.songIds.push(songId);
+        saveData();
+        renderSetlists();
+      }
+    }
+
+    function removeFromSetlist(setId, songId) {
+      const set = setlists.find(s => s.id === setId);
+      if(set) {
+        set.songIds = set.songIds.filter(id => id !== songId);
+        saveData();
+        renderSetlists();
+      }
+    }
+
+    function openSetlistModal() {
+      document.getElementById('input-setlist-name').value = '';
+      document.getElementById('setlist-modal').classList.remove('hidden');
+    }
+
+    function closeSetlistModal() {
+      document.getElementById('setlist-modal').classList.add('hidden');
+    }
+
+    function saveSetlist(e) {
+      e.preventDefault();
+      const name = document.getElementById('input-setlist-name').value.trim();
+      if(!name) return;
+
+      const newSet = {
+        id: 'set_' + Date.now(),
+        name,
+        songIds: []
+      };
+
+      setlists.push(newSet);
+      saveData();
+      renderSetlists();
+      closeSetlistModal();
+    }
+
+    function deleteSetlist(setId) {
+      if(confirm('¿Eliminar este repertorio?')) {
+        setlists = setlists.filter(s => s.id !== setId);
+        saveData();
+        renderSetlists();
+      }
+    }
+
+    // EXPORT & IMPORT DATA (JSON)
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ songs, setlists }));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cifrachord_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.songs) songs = imported.songs;
+          if (imported.setlists) setlists = imported.setlists;
+          saveData();
+          renderSongLibrary();
+          renderSetlists();
+          alert('¡Datos importados con éxito!');
+        } catch(err) {
+          alert('Error al leer el archivo JSON.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // UTILS
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+    }
+  </script>
 </body>
 </html>
