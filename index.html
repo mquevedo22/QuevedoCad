@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi cancionero</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <h1 class="brand">Mi cancionero</h1>
+    <nav class="tabs">
+      <button class="tab is-active" data-view="view-list">Canciones</button>
+      <button class="tab" data-view="view-repertoires">Repertorios</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- Vista: lista de canciones -->
+    <section id="view-list" class="view">
+      <input type="search" id="song-search" class="search-input" placeholder="Buscar canción o artista…">
+      <div id="song-list" class="song-list"></div>
+    </section>
+
+    <!-- Vista: canción -->
+    <section id="view-song" class="view is-hidden">
+      <button id="back-to-list" class="link-btn">← Volver a canciones</button>
+
+      <div class="song-header">
+        <div>
+          <h2 id="song-title"></h2>
+          <p id="song-artist" class="song-artist"></p>
+        </div>
+        <button id="add-to-repertoire-btn" class="btn btn--secondary">+ Añadir a repertorio</button>
+        <div id="add-to-repertoire-menu" class="dropdown-menu is-hidden"></div>
+      </div>
+
+      <div class="song-controls">
+        <div class="transpose-controls">
+          <button id="transpose-down" class="btn btn--icon" aria-label="Bajar un semitono">−</button>
+          <span id="song-semitone-label" class="semitone-label">Tono original</span>
+          <button id="transpose-up" class="btn btn--icon" aria-label="Subir un semitono">+</button>
+          <button id="transpose-reset" class="link-btn">Restablecer</button>
+        </div>
+
+        <div class="notation-toggle">
+          <button data-notation="caged" class="is-active">A B C…</button>
+          <button data-notation="europea">Do Re Mi…</button>
+        </div>
+      </div>
+
+      <div id="song-lyrics" class="song-lyrics"></div>
+    </section>
+
+    <!-- Vista: repertorios -->
+    <section id="view-repertoires" class="view is-hidden">
+      <div class="section-header">
+        <h2>Tus repertorios</h2>
+        <button id="new-repertoire-btn" class="btn btn--primary">+ Nuevo repertorio</button>
+      </div>
+      <div id="repertoire-list" class="repertoire-list"></div>
+
+      <div id="repertoire-detail" class="repertoire-detail is-hidden">
+        <div class="section-header">
+          <h3 id="repertoire-name"></h3>
+          <button id="add-song-to-repertoire-btn" class="btn btn--secondary">+ Añadir canción</button>
+        </div>
+        <ul id="repertoire-songs" class="repertoire-songs"></ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Desplegable con buscador para añadir canciones a un repertorio -->
+  <div id="song-picker" class="song-picker is-hidden">
+    <div class="song-picker__panel">
+      <div class="song-picker__header">
+        <input type="search" id="song-picker-search" class="search-input" placeholder="Buscar canción…">
+        <button id="song-picker-close" class="link-btn">Cerrar</button>
+      </div>
+      <div id="song-picker-results" class="song-picker__results"></div>
+    </div>
+  </div>
+
+  <script src="js/chords.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
