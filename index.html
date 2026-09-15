@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CifraChord Studio - Acordes y Letras</title>
+  <title>QuevedoSongBook - Acordes y Letras</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -97,7 +97,7 @@
   <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
     <div class="flex items-center space-x-2">
       <i class="fa-solid fa-guitar text-brand-600 text-xl"></i>
-      <span class="font-bold text-lg bg-gradient-to-r from-brand-600 to-amber-500 bg-clip-text text-transparent">CifraChord</span>
+      <span class="font-bold text-lg bg-gradient-to-r from-brand-600 to-amber-500 bg-clip-text text-transparent">QuevedoSongBook</span>
     </div>
     <div class="flex items-center space-x-2">
       <button id="theme-toggle-mobile" onclick="toggleDarkMode()" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700">
@@ -114,7 +114,7 @@
         <i class="fa-solid fa-guitar text-xl"></i>
       </div>
       <div>
-        <h1 class="font-bold text-lg leading-tight">CifraChord</h1>
+        <h1 class="font-bold text-lg leading-tight">QuevedoSongBook</h1>
         <p class="text-xs text-slate-500 dark:text-slate-400">Tus acordes alineados</p>
       </div>
     </div>
@@ -212,8 +212,8 @@
 
           <!-- Notation Toggle (CAGED vs European/Latin) -->
           <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1 shadow-sm">
-            <button id="btn-notation-anglo" onclick="setNotationSystem('anglo')" class="px-2 py-1 rounded text-xs font-bold bg-brand-600 text-white transition">C-D-E</button>
-            <button id="btn-notation-latin" onclick="setNotationSystem('latin')" class="px-2 py-1 rounded text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Do-Re-Mi</button>
+            <button id="btn-notation-latin" onclick="setNotationSystem('latin')" class="px-2 py-1 rounded text-xs font-bold bg-brand-600 text-white transition">Do-Re-Mi</button>
+            <button id="btn-notation-anglo" onclick="setNotationSystem('anglo')" class="px-2 py-1 rounded text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">C-D-E</button>
           </div>
 
           <!-- Font Size Adjuster -->
@@ -235,6 +235,11 @@
           <!-- Edit Action -->
           <button onclick="editCurrentSong()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Editar canción">
             <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+
+          <!-- Delete Action -->
+          <button onclick="deleteCurrentViewerSong()" class="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition" title="Eliminar canción">
+            <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
       </div>
@@ -297,38 +302,43 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Título de la canción</label>
-            <input type="text" id="input-song-title" required placeholder="Ej: De Música Ligera" 
+            <input type="text" id="input-song-title" required placeholder="Ej: Sois la sal" 
               class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Artista / Banda</label>
-            <input type="text" id="input-song-artist" required placeholder="Ej: Soda Stereo" 
+            <input type="text" id="input-song-artist" required placeholder="Ej: Mensajeros de la Paz" 
               class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Tono Original (Opcional)</label>
-            <input type="text" id="input-song-key" placeholder="Ej: Bm o C" 
+            <input type="text" id="input-song-key" placeholder="Ej: Do o C" 
               class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Género / Etiqueta</label>
-            <input type="text" id="input-song-genre" placeholder="Ej: Rock, Pop, Acústico" 
+            <input type="text" id="input-song-genre" placeholder="Ej: Religioso, Pop, Acústico" 
               class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
           </div>
         </div>
         <div>
           <div class="flex justify-between items-center mb-1">
             <label class="block text-xs font-semibold text-slate-500 uppercase">Letra y Acordes</label>
-            <span class="text-xs text-slate-400">Inserta acordes en corchetes: <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded text-brand-600">[Bm]</code></span>
+            <span class="text-xs text-slate-400">Inserta acordes en corchetes: <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded text-brand-600">[Do]</code></span>
           </div>
-          <textarea id="input-song-content" rows="10" required placeholder="[Verso 1]&#10;Ella durmió [Bm] en el calor de las [G] masas&#10;Y yo desperté [D] queriendo soñarla [A]" 
+          <textarea id="input-song-content" rows="10" required placeholder="[Do]Sois la [Sol7]sal que [Lam]puede dar sa[Sim]bor a la [Fa]vi[Rem]da.[Sol] [Sol7]" 
             class="w-full p-3 font-mono text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
         </div>
-        <div class="flex justify-end space-x-3 pt-2">
-          <button type="button" onclick="closeSongModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-sm">Cancelar</button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm shadow">Guardar Canción</button>
+        <div class="flex justify-between items-center pt-2">
+          <button type="button" id="modal-delete-btn" onclick="deleteModalSong()" class="hidden px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 font-medium text-sm transition">
+            <i class="fa-solid fa-trash-can mr-1"></i> Eliminar
+          </button>
+          <div class="flex space-x-3 ml-auto">
+            <button type="button" onclick="closeSongModal()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-sm">Cancelar</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm shadow">Guardar Canción</button>
+          </div>
         </div>
       </form>
     </div>
@@ -346,7 +356,7 @@
       <form id="setlist-form" onsubmit="saveSetlist(event)" class="p-4 space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre del Repertorio</label>
-          <input type="text" id="input-setlist-name" required placeholder="Ej: Concert Acústico Madrid" 
+          <input type="text" id="input-setlist-name" required placeholder="Ej: Concierto Acústico Madrid" 
             class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
         </div>
         <div class="flex justify-end space-x-3 pt-2">
@@ -362,26 +372,26 @@
     const sampleSongs = [
       {
         id: "s1",
+        title: "Sois la sal",
+        artist: "Mensajeros de la Paz",
+        key: "Do",
+        genre: "Religioso",
+        content: "[Estrofa 1]\n[Do]Sois la [Sol7]sal que [Lam]puede dar sa[Sim]bor a la [Fa]vi[Rem]da.[Sol] [Sol7]\n[Do]Sois la [Sol7]luz que [Lam]tiene que a[Sim]lumbrar, lle[Fa]var a [Sol]Dios.[Do] [Sol7]\n\n[Coro]\n[Fa]Sois las semillas que [Sol]tienen que dar [Do]fruto.\n[Fa]Sois los amigos que [Sol]empiezan a a[Do]mar."
+      },
+      {
+        id: "s2",
         title: "De Música Ligera",
         artist: "Soda Stereo",
         key: "Bm",
         genre: "Rock Español",
         content: "[Intro]\n[Bm]  [G]  [D]  [A]\n\n[Verso 1]\nElla durmió [Bm] en el calor de las [G] masas\nY yo desperté [D] queriendo soñarla [A]\nAlgún tiempo atrás [Bm] pensé en escribirle [G]\nPero no aprendí [D] a las primeras lu[A]ces\n\n[Coro]\nDe música li[Bm]gera [G]  [D]  [A]\nNo quedará más [Bm] nada [G]  [D]  [A]\nNada más [Bm]  [G]  [D]  [A]"
-      },
-      {
-        id: "s2",
-        title: "La Flaca",
-        artist: "Jarabe de Palo",
-        key: "Am",
-        genre: "Rock",
-        content: "[Intro]\n[Am]  [E7]  [Dm]  [Am]\n\n[Verso]\nEn la vida co[Am]nocí mujer igual a la [E7] Flaca\n100 libras de [Dm] piel y huesos, 40 kilos de [Am] salsa\nY en la cara dos [Am] soles que sin mirar te [E7] queman\nCon los que se de[Dm]rrite hasta el santo más [Am] firme\n\n[Coro]\nPor un beso de la [C] Flaca daría lo que [G] fuera\nPor un beso de e[Dm]lla aunque sólo uno [Am] fuera"
       }
     ];
 
     const sampleSetlists = [
       {
         id: "set1",
-        name: "Concierto Acústico Bar",
+        name: "Repertorio Acústico",
         songIds: ["s1", "s2"]
       }
     ];
@@ -391,7 +401,7 @@
     let currentSong = null;
     let currentSemitones = 0;
     let currentFontSize = 16;
-    let currentNotation = 'anglo'; // 'anglo' (C, D, E) or 'latin' (Do, Re, Mi)
+    let currentNotation = 'latin'; // Default notation system: European/Latin (Do, Re, Mi)
     let isAutoScrolling = false;
     let scrollInterval = null;
 
@@ -411,16 +421,16 @@
 
     // LOCAL STORAGE MANAGEMENT
     function loadData() {
-      const storedSongs = localStorage.getItem('cifrachord_songs');
-      const storedSetlists = localStorage.getItem('cifrachord_setlists');
+      const storedSongs = localStorage.getItem('quevedosongbook_songs');
+      const storedSetlists = localStorage.getItem('quevedosongbook_setlists');
       
       songs = storedSongs ? JSON.parse(storedSongs) : sampleSongs;
       setlists = storedSetlists ? JSON.parse(storedSetlists) : sampleSetlists;
     }
 
     function saveData() {
-      localStorage.setItem('cifrachord_songs', JSON.stringify(songs));
-      localStorage.setItem('cifrachord_setlists', JSON.stringify(setlists));
+      localStorage.setItem('quevedosongbook_songs', JSON.stringify(songs));
+      localStorage.setItem('quevedosongbook_setlists', JSON.stringify(setlists));
     }
 
     // DARK MODE MANAGEMENT
@@ -490,7 +500,7 @@
       let html = '';
 
       lines.forEach(line => {
-        // Match section titles like [Intro], [Verso 1], [Coro]
+        // Match section titles like [Intro], [Verso 1], [Coro], [Estrofa 1]
         if (/^\[(Intro|Verso|Coro|Outro|Estrofa|Solo|Puente|Bridge|Chorus)[^\]]*\]$/i.test(line.trim())) {
           const sectionName = line.trim().substring(1, line.trim().length - 1);
           html += `<div class="section-header-tag">[${escapeHtml(sectionName)}]</div>`;
@@ -604,10 +614,10 @@
                 ${song.key ? 'Tono: ' + convertChordNotation(song.key, 0, currentNotation) : 'Acordes'}
               </span>
               <div class="opacity-0 group-hover:opacity-100 transition space-x-1">
-                <button onclick="editSong('${song.id}')" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <button onclick="editSong('${song.id}')" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" title="Editar">
                   <i class="fa-solid fa-pen"></i>
                 </button>
-                <button onclick="deleteSong('${song.id}')" class="p-1.5 text-slate-400 hover:text-red-500">
+                <button onclick="deleteSong('${song.id}')" class="p-1.5 text-slate-400 hover:text-red-500" title="Eliminar">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -737,6 +747,13 @@
       document.getElementById('input-song-genre').value = song ? song.genre || '' : '';
       document.getElementById('input-song-content').value = song ? song.content : '';
 
+      const deleteBtn = document.getElementById('modal-delete-btn');
+      if (song) {
+        deleteBtn.classList.remove('hidden');
+      } else {
+        deleteBtn.classList.add('hidden');
+      }
+
       document.getElementById('song-modal').classList.remove('hidden');
     }
 
@@ -790,6 +807,24 @@
         saveData();
         renderSongLibrary();
         renderSetlists();
+        if (currentSong && currentSong.id === id) {
+          switchView('library');
+          currentSong = null;
+        }
+      }
+    }
+
+    function deleteCurrentViewerSong() {
+      if (currentSong) {
+        deleteSong(currentSong.id);
+      }
+    }
+
+    function deleteModalSong() {
+      const id = document.getElementById('song-id').value;
+      if (id) {
+        closeSongModal();
+        deleteSong(id);
       }
     }
 
@@ -964,7 +999,7 @@
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ songs, setlists }));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `cifrachord_backup_${new Date().toISOString().slice(0,10)}.json`);
+      downloadAnchor.setAttribute("download", `QuevedoSongBook_backup_${new Date().toISOString().slice(0,10)}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
