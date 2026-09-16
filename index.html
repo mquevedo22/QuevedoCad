@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuevedoSongBook - Gestor de Canciones y Repertorios</title>
+    <title>QuevedoSongBook - Buscador de Canciones y Acordes</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome CDN para iconos de red, estado y música -->
+    <!-- FontAwesome CDN para iconos de música, red y controles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase Web SDK CDN (Compat v9) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -17,7 +17,7 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
+            background-color: #0b0f19;
             color: #f8fafc;
         }
 
@@ -61,103 +61,114 @@
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #111827;
         }
         ::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #374151;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #4b5563;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-slate-900 text-slate-100">
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
 
-    <header class="sticky top-0 z-50 bg-slate-800/95 backdrop-blur border-b border-slate-700/80 px-4 py-3 shadow-lg">
-        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <!-- Navbar compacta y profesional -->
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 shadow-md">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
             
-            <!-- Logo & Title -->
-            <div class="flex items-center gap-3 cursor-pointer" onclick="showView('home')">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                    <i class="fa-solid fa-guitar text-xl"></i>
+            <!-- Logo & Marca -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="showView('home')">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-music text-lg"></i>
                 </div>
-                <div>
-                    <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
+                <div class="flex flex-col">
+                    <span class="font-bold text-base text-white leading-tight tracking-tight flex items-center gap-1.5">
                         QuevedoSongBook
-                        <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-normal">v2.5</span>
-                    </h1>
-                    <p class="text-xs text-slate-400 hidden sm:block">Gestor de Acordes y Repertorios Pro</p>
-                </div>
-            </div>
-
-            <!-- Indicator & Quick Diagnostic Button -->
-            <div class="flex items-center gap-2 sm:gap-4">
-                <!-- Status Badge -->
-                <div id="status-badge" class="flex items-center gap-2 bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300">
-                    <span id="status-dot" class="w-3 h-3 rounded-full bg-amber-500 pulse-active shadow-sm"></span>
-                    <span id="status-text" class="text-slate-300">Iniciando BBDD...</span>
-                </div>
-
-                <!-- Test Access Button Header Icon -->
-                <button onclick="testDatabaseConnection(true)" title="Probar acceso real a Firestore" class="relative group bg-slate-700/60 hover:bg-slate-700 text-slate-200 p-2.5 rounded-full border border-slate-600/80 transition flex items-center justify-center">
-                    <i class="fa-solid fa-network-wired text-indigo-400 group-hover:scale-110 transition-transform"></i>
-                    <span class="absolute -bottom-1 -right-1 flex h-3 w-3">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        <span class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.2 rounded-md font-mono font-normal">PRO</span>
                     </span>
-                </button>
+                    <span class="text-[11px] text-slate-400 font-medium">Buscador y Repertorios</span>
+                </div>
             </div>
 
-            <!-- Navigation Links -->
-            <nav class="flex items-center gap-1 sm:gap-2 w-full sm:w-auto border-t sm:border-0 border-slate-700/60 pt-2 sm:pt-0 mt-1 sm:mt-0 justify-around sm:justify-end">
-                <button onclick="showView('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30">
-                    <i class="fa-solid fa-music"></i> Canciones
-                </button>
-                <button onclick="showView('setlists')" id="nav-setlists" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
-                    <i class="fa-solid fa-list-check"></i> Repertorios
-                </button>
-                <button onclick="showView('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
-                    <i class="fa-solid fa-database"></i> Datos y Test
-                </button>
-            </nav>
+            <!-- Navegación y Estado discreto -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <nav class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                    <button onclick="showView('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i> <span class="hidden sm:inline">Buscar</span>
+                    </button>
+                    <button onclick="showView('setlists')" id="nav-setlists" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
+                        <i class="fa-solid fa-list-check text-xs"></i> <span class="hidden sm:inline">Repertorios</span>
+                    </button>
+                    <button onclick="showView('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50" title="Ajustes y Copias">
+                        <i class="fa-solid fa-gear text-xs"></i>
+                    </button>
+                </nav>
+
+                <!-- Indicador Discreto de Estado de Firestore -->
+                <div class="relative group">
+                    <button onclick="testDatabaseConnection(true)" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer" title="Haga clic para diagnosticar conexión">
+                        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 pulse-active shadow-sm"></span>
+                        <i id="status-icon" class="fa-solid fa-database text-xs text-slate-400"></i>
+                    </button>
+                    <!-- Tooltip Informativo flotante al pasar el cursor -->
+                    <div class="absolute right-0 top-full mt-2 hidden group-hover:block w-64 p-3 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-50 text-xs text-slate-300 pointer-events-none">
+                        <div class="font-bold text-white mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-indigo-400"></i> Estado de la BBDD
+                        </div>
+                        <p id="status-tooltip-text">Iniciando verificación de conexión...</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </header>
 
     <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6">
 
-        <!-- Banner Informativo de Estado de BBDD -->
-        <div id="db-mode-banner" class="mb-6 p-4 rounded-xl border flex items-start gap-3 bg-amber-500/10 border-amber-500/30 text-amber-200">
-            <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xl mt-0.5"></i>
-            <div class="text-sm flex-1">
-                <span class="font-semibold block text-base" id="banner-title">Comprobando conexión con Firestore...</span>
-                <span id="banner-desc" class="text-slate-300">Inicializando componentes y la caché sin conexión local.</span>
-            </div>
-            <button onclick="testDatabaseConnection(true)" class="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-lg text-xs font-semibold whitespace-nowrap transition">
-                <i class="fa-solid fa-rotate text-xs mr-1"></i> Verificar
-            </button>
-        </div>
-
-        <!-- ================= VISTA 1: LISTA DE CANCIONES (HOME) ================= -->
+        <!-- ================= VISTA 1: BUSCADOR DE CANCIONES (HOME) ================= -->
         <section id="view-home" class="space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white tracking-tight">Biblioteca de Canciones</h2>
-                    <p class="text-sm text-slate-400">Busca, edita o agrega tus canciones con cifrado armónico</p>
+            
+            <!-- Hero Buscador Principal -->
+            <div class="pt-2 pb-4 text-center space-y-3">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                    ¿Qué canción vas a tocar hoy?
+                </h2>
+                <p class="text-sm text-slate-400 max-w-lg mx-auto">
+                    Busca acordes, transposiciones y letras en tiempo real en tu biblioteca musical.
+                </p>
+
+                <!-- Barra de Búsqueda Destacada -->
+                <div class="max-w-2xl mx-auto pt-2">
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 text-indigo-400 text-lg"></i>
+                        <input type="text" id="search-input" onkeyup="renderSongList()" placeholder="Buscar por título, artista o verso..." 
+                            class="w-full pl-12 pr-28 py-3.5 bg-slate-800/90 border border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-base shadow-lg transition-all">
+                        
+                        <div class="absolute right-3 flex items-center gap-2">
+                            <button id="search-clear-btn" onclick="clearSearch()" class="hidden text-slate-400 hover:text-white p-1 text-xs">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <span class="hidden sm:inline-block text-[10px] font-mono font-semibold text-slate-400 bg-slate-900 border border-slate-700 px-2 py-1 rounded-md">
+                                /
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <button onclick="createNewSong()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Nueva Canción
+            </div>
+
+            <!-- Cabecera de Lista y Botón Agregar -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                    <span id="songs-count-badge" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-mono">0 canciones</span>
+                </div>
+                <button onclick="createNewSong()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-xs"></i> Agregar Canción
                 </button>
             </div>
 
-            <!-- Buscador -->
-            <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
-                <input type="text" id="search-input" onkeyup="renderSongList()" placeholder="Buscar por título, artista o contenido..." 
-                    class="w-full pl-11 pr-4 py-3 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-inner">
-            </div>
-
-            <!-- Lista de Canciones -->
+            <!-- Lista de Canciones Grid -->
             <div id="song-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Se puebla dinámicamente -->
             </div>
@@ -167,8 +178,8 @@
         <section id="view-editor" class="hidden space-y-6">
             <div class="flex items-center justify-between">
                 <h2 id="editor-title-text" class="text-2xl font-bold text-white">Nueva Canción</h2>
-                <button onclick="showView('home')" class="text-slate-400 hover:text-slate-200">
-                    <i class="fa-solid fa-xmark text-2xl"></i>
+                <button onclick="showView('home')" class="text-slate-400 hover:text-slate-200 p-2">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
@@ -367,7 +378,7 @@
 
     </main>
 
-    <!-- Modal Mensaje Personalizado (Sin usar alert) -->
+    <!-- Modal Mensaje Personalizado -->
     <div id="app-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
             <h3 id="modal-title" class="text-xl font-bold text-white">Aviso</h3>
@@ -442,54 +453,37 @@
             document.getElementById('app-modal').classList.add('hidden');
         }
 
+        // Actualizar indicador discreto de BBDD en el header
         function updateStatusUI(state, customMessage) {
             const dot = document.getElementById('status-dot');
-            const text = document.getElementById('status-text');
-            const badge = document.getElementById('status-badge');
-            
-            const banner = document.getElementById('db-mode-banner');
-            const bannerTitle = document.getElementById('banner-title');
-            const bannerDesc = document.getElementById('banner-desc');
+            const icon = document.getElementById('status-icon');
+            const tooltip = document.getElementById('status-tooltip-text');
 
-            // Reset classes
-            dot.className = "w-3 h-3 rounded-full transition-all duration-300 ";
-            badge.className = "flex items-center gap-2 bg-slate-900/80 border px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ";
+            dot.className = "w-2.5 h-2.5 rounded-full transition-all duration-300 ";
 
             if (state === 'online') {
                 isFirestoreOnline = true;
                 isUsingCache = false;
 
                 dot.classList.add('bg-emerald-500', 'pulse-active');
-                badge.classList.add('border-emerald-500/40', 'text-emerald-300');
-                text.innerText = "🟢 En Línea (Nube)";
-
-                banner.className = "mb-6 p-4 rounded-xl border flex items-start gap-3 bg-emerald-500/10 border-emerald-500/30 text-emerald-200";
-                bannerTitle.innerText = "🟢 Conectado en tiempo real a Firebase Firestore";
-                bannerDesc.innerText = "Todos los cambios se están guardando e intercambiando en la nube en vivo.";
+                icon.className = "fa-solid fa-cloud text-xs text-emerald-400";
+                if (tooltip) tooltip.innerText = "🟢 Conectado en tiempo real con Firestore en la nube.";
 
             } else if (state === 'cache') {
                 isFirestoreOnline = false;
                 isUsingCache = true;
 
                 dot.classList.add('bg-amber-500', 'pulse-active');
-                badge.classList.add('border-amber-500/40', 'text-amber-300');
-                text.innerText = "🟠 Caché (Offline)";
-
-                banner.className = "mb-6 p-4 rounded-xl border flex items-start gap-3 bg-amber-500/10 border-amber-500/30 text-amber-200";
-                bannerTitle.innerText = "🟠 Trabajando en modo Caché Local";
-                bannerDesc.innerText = customMessage || "Sin conexión activa con la nube. Estás leyendo y guardando en la memoria local IndexedDB.";
+                icon.className = "fa-solid fa-database text-xs text-amber-400";
+                if (tooltip) tooltip.innerText = customMessage || "🟠 Trabajando en modo caché offline local (IndexedDB).";
 
             } else if (state === 'error') {
                 isFirestoreOnline = false;
                 isUsingCache = false;
 
                 dot.classList.add('bg-rose-500');
-                badge.classList.add('border-rose-500/40', 'text-rose-300');
-                text.innerText = "🔴 Sin Acceso (Error)";
-
-                banner.className = "mb-6 p-4 rounded-xl border flex items-start gap-3 bg-rose-500/10 border-rose-500/30 text-rose-200";
-                bannerTitle.innerText = "🔴 Error de Acceso a la Base de Datos";
-                bannerDesc.innerText = customMessage || "Comprueba las reglas de seguridad de Firebase o tu conexión a internet.";
+                icon.className = "fa-solid fa-triangle-exclamation text-xs text-rose-400";
+                if (tooltip) tooltip.innerText = customMessage || "🔴 Error de conexión o permisos denegados en BBDD.";
             }
         }
 
@@ -508,7 +502,6 @@
             const startTime = Date.now();
 
             try {
-                // Intentar lectura real pidiendo metadatos
                 const snapshot = await db.collection('songs').limit(1).get({ source: 'default' });
                 const elapsed = Date.now() - startTime;
                 const fromCache = snapshot.metadata.fromCache;
@@ -540,7 +533,6 @@
             } catch (error) {
                 console.error("Error en test de BBDD:", error);
                 
-                // Si falla la red o los permisos
                 if (error.code === 'permission-denied') {
                     updateStatusUI('error', 'Permiso denegado por Reglas de Seguridad de Firebase.');
                 } else {
@@ -590,7 +582,7 @@
                 renderSetlists();
             });
 
-            // Ejecutar chequeo inicial
+            // Chequeo inicial discreto
             testDatabaseConnection(false);
         }
 
@@ -598,14 +590,13 @@
             document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
             document.getElementById(`view-${viewName}`).classList.remove('hidden');
 
-            // Actualizar botones de navegación
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50";
+                btn.className = "nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50";
             });
 
             const activeBtn = document.getElementById(`nav-${viewName}`);
             if (activeBtn) {
-                activeBtn.className = "nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30";
+                activeBtn.className = "nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30";
             }
 
             stopScroll();
@@ -617,11 +608,27 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        function clearSearch() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = '';
+                renderSongList();
+                input.focus();
+            }
+        }
+
         function renderSongList() {
-            const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+            const inputEl = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear-btn');
+            const query = (inputEl?.value || '').toLowerCase().trim();
             const container = document.getElementById('song-list');
-            if (!container) return;
+            const countBadge = document.getElementById('songs-count-badge');
             
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', query.length === 0);
+            }
+
+            if (!container) return;
             container.innerHTML = '';
 
             const filtered = songs.filter(s => 
@@ -630,37 +637,61 @@
                 (s.content || '').toLowerCase().includes(query)
             );
 
+            if (countBadge) {
+                countBadge.innerText = `${filtered.length} ${filtered.length === 1 ? 'canción' : 'canciones'}`;
+            }
+
             if (filtered.length === 0) {
                 container.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-slate-800/40 rounded-2xl border border-dashed border-slate-700">
-                        <i class="fa-solid fa-compact-disc text-4xl text-slate-600 mb-3 block"></i>
-                        <p class="text-slate-400 font-medium">No se encontraron canciones</p>
-                        <p class="text-xs text-slate-500 mt-1">Crea una nueva canción o modifica los términos de búsqueda</p>
+                    <div class="col-span-full text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800 space-y-3">
+                        <i class="fa-solid fa-magnifying-glass text-4xl text-slate-700"></i>
+                        <div>
+                            <p class="text-slate-300 font-semibold">No se encontraron canciones</p>
+                            <p class="text-xs text-slate-500 mt-1">${query ? 'Prueba con otro término o limpia la búsqueda.' : 'Aún no hay canciones guardadas.'}</p>
+                        </div>
+                        ${query ? '<button onclick="clearSearch()" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">Limpiar Búsqueda</button>' : ''}
                     </div>`;
                 return;
             }
 
             filtered.forEach(song => {
                 const div = document.createElement('div');
-                div.className = "bg-slate-800 border border-slate-700/80 hover:border-indigo-500/50 p-4 rounded-xl cursor-pointer transition shadow-md hover:shadow-indigo-500/10 group flex flex-col justify-between";
+                div.className = "bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-indigo-500/40 p-4 rounded-2xl cursor-pointer transition-all duration-200 group flex flex-col justify-between shadow-md hover:shadow-indigo-500/10";
                 div.onclick = () => openSong(song.id);
                 
                 div.innerHTML = `
                     <div>
-                        <div class="flex items-start justify-between gap-2 mb-1">
-                            <h3 class="font-bold text-white text-lg group-hover:text-indigo-300 transition">${song.title || 'Sin Título'}</h3>
-                            <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-transform"></i>
+                        <div class="flex items-start justify-between gap-2 mb-1.5">
+                            <h3 class="font-bold text-white text-base group-hover:text-indigo-400 transition-colors">${song.title || 'Sin Título'}</h3>
+                            <span class="text-slate-600 group-hover:text-indigo-400 transition-transform transform group-hover:translate-x-1">
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </span>
                         </div>
-                        <p class="text-sm font-medium text-slate-400">${song.artist || 'Artista Desconocido'}</p>
+                        <p class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-ninja text-[10px] text-slate-500"></i>
+                            ${song.artist || 'Artista Desconocido'}
+                        </p>
                     </div>
-                    <div class="mt-4 pt-3 border-t border-slate-700/60 flex justify-between items-center text-xs text-slate-500">
-                        <span><i class="fa-solid fa-align-left mr-1"></i> ${(song.content || '').split('\n').length} líneas</span>
-                        <span class="text-indigo-400/80 font-semibold group-hover:underline">Abrir partitura</span>
+                    <div class="mt-4 pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-500">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-lines-leaning text-[10px]"></i> ${(song.content || '').split('\n').length} líneas</span>
+                        <span class="text-indigo-400/90 font-medium group-hover:underline flex items-center gap-1">
+                            Ver Acordes
+                        </span>
                     </div>
                 `;
                 container.appendChild(div);
             });
         }
+
+        // Atajo teclado "/" para la barra de búsqueda
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                showView('home');
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.focus();
+            }
+        });
 
         function createNewSong() {
             document.getElementById('edit-id').value = '';
@@ -893,8 +924,8 @@
 
             if (setlists.length === 0) {
                 container.innerHTML = `
-                    <div class="text-center py-12 bg-slate-800/40 rounded-2xl border border-dashed border-slate-700">
-                        <i class="fa-solid fa-folder-open text-4xl text-slate-600 mb-3 block"></i>
+                    <div class="text-center py-12 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-700 mb-3 block"></i>
                         <p class="text-slate-400 font-medium">No hay repertorios creados</p>
                         <p class="text-xs text-slate-500 mt-1">Crea tu primer repertorio para organizar actuaciones</p>
                     </div>`;
@@ -903,10 +934,10 @@
 
             setlists.forEach(setlist => {
                 const wrapper = document.createElement('div');
-                wrapper.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl space-y-4 shadow-md";
+                wrapper.className = "bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-md";
 
                 let html = `
-                    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                         <h3 class="font-bold text-lg text-white flex items-center gap-2">
                             <i class="fa-solid fa-list-ul text-indigo-400"></i> ${setlist.name}
                         </h3>
@@ -920,8 +951,8 @@
                         <input type="text" placeholder="🔍 Buscar y añadir canción al repertorio..." 
                             oninput="handleSetlistSearch(this, '${setlist.id}')" 
                             onblur="setTimeout(() => hideDropdown(this), 200)"
-                            class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-                        <div class="search-results absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl max-h-48 overflow-y-auto z-20 hidden shadow-xl"></div>
+                            class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        <div class="search-results absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-800 rounded-xl max-h-48 overflow-y-auto z-20 hidden shadow-xl"></div>
                     </div>
 
                     <!-- Lista de canciones en el repertorio -->
@@ -932,7 +963,7 @@
                         const s = songs.find(x => x.id === id);
                         if (s) {
                             html += `
-                            <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
+                            <div class="flex items-center justify-between bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition">
                                 <div class="flex items-center gap-3 cursor-pointer" onclick="openSong('${s.id}')">
                                     <span class="w-6 h-6 rounded-lg bg-slate-800 text-indigo-400 text-xs font-bold flex items-center justify-center">${index + 1}</span>
                                     <div>
@@ -1054,7 +1085,7 @@
             reader.readAsText(file);
         }
 
-        // Inicio por defecto en la vista principal
+        // Inicio por defecto en el buscador principal
         showView('home');
     </script>
 </body>
