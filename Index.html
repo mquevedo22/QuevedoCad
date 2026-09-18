@@ -394,24 +394,26 @@
             document.getElementById('app-modal').classList.add('hidden');
         }
 
-        function updateStatusUI(state) {
-            const dot = document.getElementById('status-dot');
-            const icon = document.getElementById('status-icon');
-            if(!dot || !icon) return;
+function updateStatusUI(state) {
+    const dot = document.getElementById('status-dot');
+    const icon = document.getElementById('status-icon');
+    
+    // Protección para evitar que el script falle si los elementos no existen aún
+    if (!dot || !icon) return;
 
-            dot.className = "w-2.5 h-2.5 rounded-full transition-all duration-300 ";
+    dot.className = "w-2.5 h-2.5 rounded-full transition-all duration-300 ";
 
-            if (state === 'online') {
-                dot.classList.add('bg-emerald-500', 'pulse-active');
-                icon.className = "fa-solid fa-cloud text-xs text-emerald-400";
-            } else if (state === 'cache') {
-                dot.classList.add('bg-amber-500', 'pulse-active');
-                icon.className = "fa-solid fa-database text-xs text-amber-400";
-            } else {
-                dot.classList.add('bg-rose-500');
-                icon.className = "fa-solid fa-triangle-exclamation text-xs text-rose-400";
-            }
-        }
+    if (state === 'online') {
+        dot.classList.add('bg-emerald-500', 'pulse-active');
+        icon.className = "fa-solid fa-cloud text-xs text-emerald-400";
+    } else if (state === 'cache') {
+        dot.classList.add('bg-amber-500', 'pulse-active');
+        icon.className = "fa-solid fa-database text-xs text-amber-400";
+    } else {
+        dot.classList.add('bg-rose-500');
+        icon.className = "fa-solid fa-triangle-exclamation text-xs text-rose-400";
+    }
+}
 
         async function testDatabaseConnection(showNotification = false) {
             const resultsBox = document.getElementById('test-results-box');
