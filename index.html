@@ -1,58 +1,1292 @@
-async function testDatabaseConnection(showNotification = false) {
-    const resultsBox = document.getElementById('test-results-box');
-    if (resultsBox) {
-        resultsBox.innerHTML = `<p class="text-indigo-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Comprobando latencia con Firestore...</p>`;
-    }
-
-    if (!db) {
-        updateStatusUI('error');
-        if (resultsBox) resultsBox.innerHTML = `<p class="text-rose-400 font-bold">❌ Error: Instancia de Firebase no disponible.</p>`;
-        return;
-    }
-
-    const startTime = Date.now();
-
-    try {
-        // Hacemos una consulta directa a la colección
-        const snapshot = await db.collection('songs').limit(1).get({ source: 'server' });
-        const elapsed = Date.now() - startTime;
-
-        updateStatusUI('online');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuevedoSongBook - Buscador de Canciones y Acordes</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN para iconos de música, red y controles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase Web SDK CDN (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
         
-        if (resultsBox) {
-            resultsBox.innerHTML = `
-                <p class="text-emerald-400 font-bold">✅ CONEXIÓN EXITOSA</p>
-                <p>• Tiempo de respuesta: ${elapsed} ms</p>
-                <p>• Documentos recuperados: ${snapshot.size}</p>
-            `;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
         }
-        
-        if (showNotification) {
-            showModal("Conexión Correcta", `Respuesta del servidor recibida en ${elapsed}ms.`);
-        }
-    } catch (error) {
-        console.warn("Fallo en consulta servidor, probando respuesta de caché:", error);
 
+        .font-mono-chords {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Indicador de pulso de red */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .pulse-active {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+
+        /* Estilos de las líneas de acordes */
+        .line-pair {
+            margin-bottom: 1.25rem;
+            line-height: 1.35;
+        }
+        .chord-line {
+            display: block;
+            white-space: pre;
+            color: #38bdf8;
+            font-weight: 700;
+            min-height: 1.3em;
+            font-size: 1.05em;
+        }
+        .lyric-line {
+            display: block;
+            white-space: pre-wrap;
+            color: #e2e8f0;
+        }
+
+        /* Estilos de Drag and Drop */
+        .draggable-item {
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+        }
+        .draggable-item.dragging {
+            opacity: 0.4;
+            border: 2px dashed #6366f1 !important;
+            background-color: #1e1b4b !important;
+        }
+        .draggable-item.drag-over {
+            border-top: 2px solid #818cf8 !important;
+            background-color: #1e293b !important;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navbar compacta y profesional -->
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 shadow-md">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Logo & Marca -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="showView('home')">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-music text-lg"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-base text-white leading-tight tracking-tight flex items-center gap-1.5">
+                        QuevedoSongBook
+                        <span class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.2 rounded-md font-mono font-normal">PRO</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400 font-medium">Buscador y Repertorios</span>
+                </div>
+            </div>
+
+            <!-- Navegación y Estado discreto -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <nav class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                    <button onclick="showView('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i> <span class="hidden sm:inline">Buscar</span>
+                    </button>
+                    <button onclick="showView('setlists')" id="nav-setlists" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
+                        <i class="fa-solid fa-list-check text-xs"></i> <span class="hidden sm:inline">Repertorios</span>
+                    </button>
+                    <button onclick="showView('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50" title="Ajustes y Copias">
+                        <i class="fa-solid fa-gear text-xs"></i>
+                    </button>
+                </nav>
+
+                <!-- Indicador Discreto de Estado de Firestore -->
+                <div class="relative group">
+                    <button onclick="testDatabaseConnection(true)" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer" title="Haga clic para diagnosticar conexión">
+                        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 pulse-active shadow-sm"></span>
+            <!-- Navigation Links -->
+            <nav class="flex items-center gap-1 sm:gap-2 w-full sm:w-auto border-t sm:border-0 border-slate-700/60 pt-2 sm:pt-0 mt-1 sm:mt-0 justify-around sm:justify-end">
+                <button onclick="showView('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30">
+                    <i class="fa-solid fa-music"></i> Canciones
+                </button>
+                <button onclick="showView('setlists')" id="nav-setlists" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
+                    <i class="fa-solid fa-list-check"></i> Repertorios
+                </button>
+                <button onclick="showView('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50">
+                    <i class="fa-solid fa-database"></i> Datos y Test
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6">
+
+        <!-- ================= VISTA 1: BUSCADOR DE CANCIONES (HOME) ================= -->
+        <section id="view-home" class="space-y-6">
+            
+            <!-- Hero Buscador Principal -->
+            <div class="pt-2 pb-4 text-center space-y-3">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                    ¿Qué canción vas a tocar hoy?
+                </h2>
+                <p class="text-sm text-slate-400 max-w-lg mx-auto">
+                    Busca acordes, transposiciones y letras en tiempo real en tu biblioteca musical.
+                </p>
+
+                <!-- Barra de Búsqueda Destacada -->
+                <div class="max-w-2xl mx-auto pt-2">
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 text-indigo-400 text-lg"></i>
+                        <input type="text" id="search-input" onkeyup="renderSongList()" placeholder="Buscar por título, artista o verso..." 
+                            class="w-full pl-12 pr-28 py-3.5 bg-slate-800/90 border border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-base shadow-lg transition-all">
+                        
+                        <div class="absolute right-3 flex items-center gap-2">
+                            <button id="search-clear-btn" onclick="clearSearch()" class="hidden text-slate-400 hover:text-white p-1 text-xs">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <span class="hidden sm:inline-block text-[10px] font-mono font-semibold text-slate-400 bg-slate-900 border border-slate-700 px-2 py-1 rounded-md">
+                                /
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cabecera de Lista y Botón Agregar -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                    <span id="songs-count-badge" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-mono">0 canciones</span>
+                </div>
+                <button onclick="createNewSong()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-xs"></i> Agregar Canción
+                </button>
+            </div>
+
+            <!-- Lista de Canciones Grid -->
+            <div id="song-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Se puebla dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ================= VISTA 2: EDITOR DE CANCIONES ================= -->
+        <section id="view-editor" class="hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 id="editor-title-text" class="text-2xl font-bold text-white">Nueva Canción</h2>
+                <button onclick="showView('home')" class="text-slate-400 hover:text-slate-200 p-2">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Guía Rápida de Sintaxis -->
+            <div class="bg-slate-800/80 border border-indigo-500/30 rounded-xl p-4 text-xs text-slate-300 space-y-2">
+                <div class="flex items-center gap-2 font-semibold text-indigo-400 text-sm">
+                    <i class="fa-regular fa-lightbulb"></i> ¿Cómo formato la letra y los acordes?
+                </div>
+                <p>Escribe el acorde entre corchetes <code class="bg-slate-900 text-sky-400 px-1.5 py-0.5 rounded font-mono border border-slate-700">[Acorde]</code> justo delante de la sílaba donde debe sonar.</p>
+                <p class="text-slate-400">Ejemplo: <code class="bg-slate-900 text-slate-300 px-1.5 py-0.5 rounded font-mono border border-slate-700">En el [Do]mar la [Sol]vida es [Lam]más sabrosa</code></p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); saveSong();" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Título de la Canción *</label>
+                        <input type="text" id="edit-title" required placeholder="Ej. De Música Ligera" 
+                            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Artista o Banda</label>
+                        <input type="text" id="edit-artist" placeholder="Ej. Soda Stereo" 
+                            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Letra con Acordes entre Corchetes [ ]</label>
+                    <textarea id="edit-content" placeholder="Escribe o pega aquí tu letra con acordes..." 
+                        class="w-full h-80 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> Guardar
+                        </button>
+                        <button type="button" onclick="showView('home')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl transition">
+                            Cancelar
+                        </button>
+                    </div>
+                    <button type="button" id="btn-delete-song" onclick="deleteCurrentSong()" class="hidden bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 px-4 py-2.5 rounded-xl transition">
+                        <i class="fa-solid fa-trash mr-1"></i> Eliminar
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ================= VISTA 3: VISOR INTERACTIVO ================= -->
+        <section id="view-viewer" class="hidden space-y-4">
+            <!-- Header Canción -->
+            <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 border border-slate-700/80 p-4 rounded-xl shadow-md">
+                <div>
+                    <h2 id="viewer-title" class="text-2xl font-bold text-white leading-tight">Título</h2>
+                    <p id="viewer-artist" class="text-sm font-medium text-indigo-400">Artista</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="editCurrentSong()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar
+                    </button>
+                    <button onclick="showView('home')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition">
+                        <i class="fa-solid fa-arrow-left"></i> Volver
+                    </button>
+                </div>
+            </div>
+
+            <!-- Toolbar de Transposición y Reproducción -->
+            <div class="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+                
+                <!-- Controles de Tono -->
+                <div class="flex items-center gap-2 border-r border-slate-700 pr-3">
+                    <span class="text-slate-400 font-medium">Tono:</span>
+                    <button onclick="changeTone(-1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-white flex items-center justify-center transition active:scale-95">-1</button>
+                    <span id="tone-display" class="w-8 text-center font-bold text-sky-400 text-base">0</span>
+                    <button onclick="changeTone(1)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-white flex items-center justify-center transition active:scale-95">+1</button>
+                    <button onclick="resetTone()" class="text-xs text-slate-400 hover:text-white underline ml-1">Reset</button>
+                </div>
+
+                <!-- Notación -->
+                <div class="flex items-center gap-2 border-r border-slate-700 pr-3">
+                    <span class="text-slate-400 font-medium">Notación:</span>
+                    <button id="btn-notation" onclick="toggleNotation()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg font-semibold transition">
+                        Europea (Do, Re...)
+                    </button>
+                </div>
+
+                <!-- Tamaño Fuente -->
+                <div class="flex items-center gap-1 border-r border-slate-700 pr-3">
+                    <span class="text-slate-400 font-medium mr-1">Fuente:</span>
+                    <button onclick="changeFontSize(-2)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-white flex items-center justify-center">A-</button>
+                    <button onclick="changeFontSize(2)" class="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-white flex items-center justify-center">A+</button>
+                </div>
+
+                <!-- Auto Scroll -->
+                <div class="flex items-center gap-2">
+                    <button id="btn-scroll" onclick="toggleScroll()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-play text-xs"></i> Auto-Scroll
+                    </button>
+                    <input type="range" id="scroll-speed" min="1" max="10" value="3" title="Velocidad Scroll" class="w-16 accent-indigo-500 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Hoja de la canción -->
+            <div id="song-sheet" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-mono-chords overflow-x-auto shadow-inner text-slate-200 transition-all duration-200">
+                <!-- Se renderiza dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ================= VISTA 4: REPERTORIOS (SETLISTS) ================= -->
+        <section id="view-setlists" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Repertorios de Actuación</h2>
+                    <p class="text-sm text-slate-400">Arrastra las canciones para cambiar su orden en tus directos</p>
+                </div>
+                <button onclick="createNewSetlist()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-folder-plus"></i> Nuevo Repertorio
+                </button>
+            </div>
+
+            <div id="setlists-container" class="space-y-4">
+                <!-- Se puebla dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ================= VISTA 5: CONFIGURACIÓN, TEST Y COPIA DE SEGURIDAD ================= -->
+        <section id="view-settings" class="hidden space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-white">Diagnóstico y Copias de Seguridad</h2>
+                <p class="text-sm text-slate-400">Estado detallado de la conexión a Firestore e importación/exportación</p>
+            </div>
+
+            <!-- Panel de Test de Diagnóstico Completo -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-4 shadow-md">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-heart-pulse text-indigo-400"></i>
+                        Prueba Real de Conexión a la BBDD
+                    </h3>
+                    <button onclick="testDatabaseConnection(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> Ejecutar Prueba Ahora
+                    </button>
+                </div>
+
+                <div id="test-results-box" class="bg-slate-900 border border-slate-700/80 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-2">
+                    <p class="text-slate-400">// Presiona "Ejecutar Prueba Ahora" para realizar una petición en vivo a Firestore...</p>
+                </div>
+
+                <!-- Cuadro Leyenda informativa -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs">
+                        <span class="font-bold text-emerald-400 flex items-center gap-1.5 mb-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 🟢 MODO EN LÍNEA
+                        </span>
+                        <p class="text-slate-300">Conexión activa con el servidor. Sincronización instantánea con otros dispositivos.</p>
+                    </div>
+
+                    <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs">
+                        <span class="font-bold text-amber-400 flex items-center gap-1.5 mb-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 🟠 MODO CACHÉ (OFFLINE)
+                        </span>
+                        <p class="text-slate-300">Sin internet o servidor inalcanzable. Cambios guardados en memoria local IndexedDB.</p>
+                    </div>
+
+                    <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs">
+                        <span class="font-bold text-rose-400 flex items-center gap-1.5 mb-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 🔴 ERROR DE ACCESO
+                        </span>
+                        <p class="text-slate-300">Reglas de seguridad de Firebase denegadas o fallo grave en las claves API.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exportar e Importar -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-4 shadow-md">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-export text-indigo-400"></i>
+                    Copia de Seguridad (JSON)
+                </h3>
+                <p class="text-sm text-slate-400">Descarga un respaldo con todas tus canciones y repertorios o restaura un archivo previo.</p>
+
+                <div class="flex flex-wrap gap-4 pt-2">
+                    <button onclick="exportData()" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2.5 rounded-xl border border-slate-600 transition flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-download text-indigo-400"></i> Exportar Copia de Seguridad
+                    </button>
+
+                    <label class="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2.5 rounded-xl border border-slate-600 transition flex items-center gap-2 text-sm cursor-pointer">
+                        <i class="fa-solid fa-upload text-indigo-400"></i> Importar Archivo JSON
+                        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Mensaje Personalizado -->
+    <div id="app-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 id="modal-title" class="text-xl font-bold text-white">Aviso</h3>
+            <p id="modal-body" class="text-sm text-slate-300 leading-relaxed"></p>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-xl text-sm transition">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSCK38tcDF156F_doBCUnDzjzwuk6bQI0",
+            authDomain: "quevedosongbook.firebaseapp.com",
+            projectId: "quevedosongbook",
+            storageBucket: "quevedosongbook.firebasestorage.app",
+            messagingSenderId: "280589957991",
+            appId: "1:280589957991:web:e62cc9745f4f10d7340dc2"
+        };
+
+        let db;
+        let isFirestoreOnline = false;
+        let isUsingCache = true;
+
+        // Variables de estado para Drag and Drop
+        let draggedItem = null;
+        let draggedSetlistId = null;
+        let dragStartIndex = -1;
+
+        // Inicializar Firebase con Persistencia Offline
         try {
-            // Reintento en caché si la red falla
-            const cacheSnapshot = await db.collection('songs').limit(1).get({ source: 'cache' });
-            updateStatusUI('cache');
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
 
+            db.enablePersistence({ synchronizeTabs: true }).then(() => {
+                console.log("Persistencia local activada correctamente.");
+            }).catch((err) => {
+                if (err.code === 'failed-precondition') {
+                    console.warn("Múltiples pestañas abiertas, persistencia en pestaña principal.");
+                } else if (err.code === 'unimplemented') {
+                    console.warn("Navegador no soporta persistencia offline.");
+                }
+            });
+
+        } catch (e) {
+            console.error("Error crítico inicializando Firebase:", e);
+            updateStatusUI('error', 'Error de inicialización de BBDD');
+        }
+
+        // Estado Global de la App
+        let songs = [];
+        let setlists = [];
+        let currentSongId = null;
+        let currentToneOffset = 0;
+        let currentNotation = localStorage.getItem('quevedosongbook_notation') || 'euro';
+        let fontSize = 16;
+        let scrollInterval = null;
+
+        // Escalas para transposición
+        const scaleCaged = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const scaleEuro = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+        const flatToSharp = { 
+            'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#', 
+            'Reb':'Do#', 'Mib':'Re#', 'Solb':'Fa#', 'Lab':'Sol#', 'Sib':'La#' 
+        };
+
+        function showModal(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerText = message;
+            document.getElementById('app-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('app-modal').classList.add('hidden');
+        }
+
+        // Actualizar indicador discreto de BBDD en el header
+        function updateStatusUI(state, customMessage) {
+            const dot = document.getElementById('status-dot');
+            const icon = document.getElementById('status-icon');
+            const tooltip = document.getElementById('status-tooltip-text');
+
+            dot.className = "w-2.5 h-2.5 rounded-full transition-all duration-300 ";
+
+            if (state === 'online') {
+                isFirestoreOnline = true;
+                isUsingCache = false;
+
+                dot.classList.add('bg-emerald-500', 'pulse-active');
+                icon.className = "fa-solid fa-cloud text-xs text-emerald-400";
+                if (tooltip) tooltip.innerText = "🟢 Conectado en tiempo real con Firestore en la nube.";
+
+            } else if (state === 'cache') {
+                isFirestoreOnline = false;
+                isUsingCache = true;
+
+                dot.classList.add('bg-amber-500', 'pulse-active');
+                icon.className = "fa-solid fa-database text-xs text-amber-400";
+                if (tooltip) tooltip.innerText = customMessage || "🟠 Trabajando en modo caché offline local (IndexedDB).";
+
+            } else if (state === 'error') {
+                isFirestoreOnline = false;
+                isUsingCache = false;
+
+                dot.classList.add('bg-rose-500');
+                icon.className = "fa-solid fa-triangle-exclamation text-xs text-rose-400";
+                if (tooltip) tooltip.innerText = customMessage || "🔴 Error de conexión o permisos denegados en BBDD.";
+            }
+        }
+
+        async function testDatabaseConnection(showNotification = false) {
+            const resultsBox = document.getElementById('test-results-box');
             if (resultsBox) {
-                resultsBox.innerHTML = `
-                    <p class="text-amber-400 font-bold">⚠️ MODO SIN CONEXIÓN (Caché)</p>
-                    <p>• Sin respuesta directa del servidor, usando datos locales.</p>
+                resultsBox.innerHTML = `<p class="text-indigo-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Diagnosticando conexión con Firestore en vivo...</p>`;
+            }
+
+            if (!db) {
+                updateStatusUI('error', 'Firebase DB no está configurado.');
+                if (resultsBox) resultsBox.innerHTML = `<p class="text-rose-400">❌ Error: Firebase no está instanciado.</p>`;
+                return;
+            }
+
+            const startTime = Date.now();
+
+            try {
+                const snapshot = await db.collection('songs').limit(1).get({ source: 'default' });
+                const elapsed = Date.now() - startTime;
+                const fromCache = snapshot.metadata.fromCache;
+
+                if (!fromCache) {
+                    updateStatusUI('online');
+                    if (resultsBox) {
+                        resultsBox.innerHTML = `
+                            <p class="text-emerald-400 font-bold">✅ PRUEBA EXITOSA - CONECTADO EN TIEMPO REAL</p>
+                            <p>• Tiempo de respuesta: ${elapsed} ms</p>
+                            <p>• Origen de datos: Servidor en la nube (fromCache = false)</p>
+                            <p>• Estado: Lectura/Escritura verificada.</p>
+                        `;
+                    }
+                    if (showNotification) showModal("Conexión Exitosa", "La BBDD responde perfectamente desde la Nube en tiempo real.");
+                } else {
+                    updateStatusUI('cache', 'La respuesta proviene de la memoria caché local.');
+                    if (resultsBox) {
+                        resultsBox.innerHTML = `
+                            <p class="text-amber-400 font-bold">⚠️ MODO CACHÉ - RESPUESTA LOCAL</p>
+                            <p>• Tiempo de respuesta: ${elapsed} ms</p>
+                            <p>• Origen de datos: Memoria local del navegador (fromCache = true)</p>
+                            <p>• Detalle: No se pudo verificar la sincronización remota con el servidor.</p>
+                        `;
+                    }
+                    if (showNotification) showModal("Modo Caché Activo", "Estás trabajando con la caché local de tu navegador. Si estás sin internet, tus cambios se guardarán al reconectarte.");
+                }
+
+            } catch (error) {
+                console.error("Error en test de BBDD:", error);
+                
+                if (error.code === 'permission-denied') {
+                    updateStatusUI('error', 'Permiso denegado por Reglas de Seguridad de Firebase.');
+                } else {
+                    updateStatusUI('cache', error.message);
+                }
+
+                if (resultsBox) {
+                    resultsBox.innerHTML = `
+                        <p class="text-rose-400 font-bold">❌ FALLO DE COMUNICACIÓN</p>
+                        <p>• Error Code: ${error.code || 'Desconocido'}</p>
+                        <p>• Detalle: ${error.message}</p>
+                    `;
+                }
+
+                if (showNotification) showModal("Error de Prueba", `No se pudo conectar a la BBDD: ${error.message}`);
+            }
+        }
+
+        if (db) {
+            // Escuchar colección de Canciones
+            db.collection('songs').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+                songs = [];
+                snapshot.forEach(doc => {
+                    songs.push({ id: doc.id, ...doc.data() });
+                });
+
+                const fromCache = snapshot.metadata.fromCache;
+                if (fromCache) {
+                    updateStatusUI('cache');
+                } else {
+                    updateStatusUI('online');
+                }
+
+                renderSongList();
+                if (currentSongId) renderSongSheet();
+            }, (err) => {
+                console.error("Error en Snapshot de canciones:", err);
+                updateStatusUI('error', err.message);
+            });
+
+            // Escuchar colección de Repertorios
+            db.collection('setlists').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+                setlists = [];
+                snapshot.forEach(doc => {
+                    setlists.push({ id: doc.id, ...doc.data() });
+                });
+                renderSetlists();
+            });
+
+            // Chequeo inicial discreto
+            testDatabaseConnection(false);
+        }
+
+        function showView(viewName) {
+            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50";
+            });
+
+            const activeBtn = document.getElementById(`nav-${viewName}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-2 text-indigo-400 bg-indigo-500/10 border border-indigo-500/30";
+            }
+
+            stopScroll();
+
+            if (viewName === 'home') renderSongList();
+            if (viewName === 'setlists') renderSetlists();
+            if (viewName === 'settings') testDatabaseConnection(false);
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = '';
+                renderSongList();
+                input.focus();
+            }
+        }
+
+        function renderSongList() {
+            const inputEl = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear-btn');
+            const query = (inputEl?.value || '').toLowerCase().trim();
+            const container = document.getElementById('song-list');
+            const countBadge = document.getElementById('songs-count-badge');
+            
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', query.length === 0);
+            }
+
+            if (!container) return;
+            container.innerHTML = '';
+
+            const filtered = songs.filter(s => 
+                (s.title || '').toLowerCase().includes(query) || 
+                (s.artist || '').toLowerCase().includes(query) ||
+                (s.content || '').toLowerCase().includes(query)
+            );
+
+            if (countBadge) {
+                countBadge.innerText = `${filtered.length} ${filtered.length === 1 ? 'canción' : 'canciones'}`;
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-16 bg-slate-900/60 rounded-2xl border border-dashed border-slate-800 space-y-3">
+                        <i class="fa-solid fa-magnifying-glass text-4xl text-slate-700"></i>
+                        <div>
+                            <p class="text-slate-300 font-semibold">No se encontraron canciones</p>
+                            <p class="text-xs text-slate-500 mt-1">${query ? 'Prueba con otro término o limpia la búsqueda.' : 'Aún no hay canciones guardadas.'}</p>
+                        </div>
+                        ${query ? '<button onclick="clearSearch()" class="text-xs bg-slate-800 hover:bg-slate-700 text-indigo-400 px-3 py-1.5 rounded-lg border border-slate-700 transition">Limpiar Búsqueda</button>' : ''}
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(song => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-indigo-500/40 p-4 rounded-2xl cursor-pointer transition-all duration-200 group flex flex-col justify-between shadow-md hover:shadow-indigo-500/10";
+                div.onclick = () => openSong(song.id);
+                
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-1.5">
+                            <h3 class="font-bold text-white text-base group-hover:text-indigo-400 transition-colors">${song.title || 'Sin Título'}</h3>
+                            <span class="text-slate-600 group-hover:text-indigo-400 transition-transform transform group-hover:translate-x-1">
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </span>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-ninja text-[10px] text-slate-500"></i>
+                            ${song.artist || 'Artista Desconocido'}
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-500">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-lines-leaning text-[10px]"></i> ${(song.content || '').split('\n').length} líneas</span>
+                        <span class="text-indigo-400/90 font-medium group-hover:underline flex items-center gap-1">
+                            Ver Acordes
+                        </span>
+                    </div>
                 `;
+                container.appendChild(div);
+            });
+        }
+
+        // Atajo teclado "/" para la barra de búsqueda
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                showView('home');
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.focus();
             }
-        } catch (cacheError) {
-            updateStatusUI('error');
-            if (resultsBox) {
-                resultsBox.innerHTML = `<p class="text-rose-400 font-bold">❌ Sin conexión: ${error.message}</p>`;
+        });
+
+        function createNewSong() {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('edit-title').value = '';
+            document.getElementById('edit-artist').value = '';
+            document.getElementById('edit-content').value = '';
+            document.getElementById('btn-delete-song').classList.add('hidden');
+            document.getElementById('editor-title-text').innerText = "Nueva Canción";
+            showView('editor');
+        }
+
+        async function saveSong() {
+            const id = document.getElementById('edit-id').value;
+            const title = document.getElementById('edit-title').value.trim();
+            const artist = document.getElementById('edit-artist').value.trim();
+            const content = document.getElementById('edit-content').value;
+
+            if (!title) {
+                showModal("Campo Requerido", "El título de la canción es obligatorio.");
+                return;
+            }
+
+            const songData = { 
+                title, 
+                artist: artist || 'Artista Desconocido', 
+                content,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (id) {
+                    await db.collection('songs').doc(id).update(songData);
+                } else {
+                    await db.collection('songs').add(songData);
+                }
+                showView('home');
+            } catch (e) {
+                console.error("Error al guardar:", e);
+                showModal("Error al Guardar", e.message);
             }
         }
 
-        if (showNotification) {
-            showModal("Resultado de Conexión", "No se pudo alcanzar el servidor de Firebase directamente.");
+        function openSong(id) {
+            const song = songs.find(s => s.id === id);
+            if (!song) return;
+
+            currentSongId = id;
+            currentToneOffset = 0;
+
+            document.getElementById('viewer-title').innerText = song.title;
+            document.getElementById('viewer-artist').innerText = song.artist;
+            document.getElementById('tone-display').innerText = '0';
+            updateNotationButton();
+
+            renderSongSheet();
+            showView('viewer');
         }
-    }
-}
+
+        function editCurrentSong() {
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+
+            document.getElementById('edit-id').value = song.id;
+            document.getElementById('edit-title').value = song.title;
+            document.getElementById('edit-artist').value = song.artist;
+            document.getElementById('edit-content').value = song.content;
+            document.getElementById('btn-delete-song').classList.remove('hidden');
+
+            document.getElementById('editor-title-text').innerText = "Editar Canción";
+            showView('editor');
+        }
+
+        async function deleteCurrentSong() {
+            const idToDelete = currentSongId || document.getElementById('edit-id').value;
+            if (!idToDelete) return;
+
+            if (confirm("¿Estás seguro de que deseas eliminar esta canción?")) {
+                try {
+                    await db.collection('songs').doc(idToDelete).delete();
+                    currentSongId = null;
+                    showView('home');
+                } catch (e) {
+                    showModal("Error al eliminar", e.message);
+                }
+            }
+        }
+
+        function toggleNotation() {
+            currentNotation = (currentNotation === 'caged') ? 'euro' : 'caged';
+            localStorage.setItem('quevedosongbook_notation', currentNotation);
+            updateNotationButton();
+            renderSongSheet();
+        }
+
+        function updateNotationButton() {
+            const btn = document.getElementById('btn-notation');
+            btn.innerText = (currentNotation === 'caged') ? 'CAGED (C, D...)' : 'Europea (Do, Re...)';
+        }
+
+        function changeTone(step) {
+            currentToneOffset += step;
+            document.getElementById('tone-display').innerText = (currentToneOffset > 0 ? '+' : '') + currentToneOffset;
+            renderSongSheet();
+        }
+
+        function resetTone() {
+            currentToneOffset = 0;
+            document.getElementById('tone-display').innerText = '0';
+            renderSongSheet();
+        }
+
+        function changeFontSize(step) {
+            fontSize += step;
+            if (fontSize < 12) fontSize = 12;
+            if (fontSize > 36) fontSize = 36;
+            document.getElementById('song-sheet').style.fontSize = fontSize + 'px';
+        }
+
+        function transposeChordStr(chordStr) {
+            return chordStr.replace(/([A-Z][a-z]?#?b?)/gi, (match) => {
+                let noteStrCased = match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+                if (flatToSharp[noteStrCased]) noteStrCased = flatToSharp[noteStrCased];
+
+                let index = scaleEuro.indexOf(noteStrCased);
+                if (index === -1) index = scaleCaged.indexOf(noteStrCased);
+
+                if (index === -1) return match;
+
+                let newIndex = (index + currentToneOffset) % 12;
+                if (newIndex < 0) newIndex += 12;
+
+                return (currentNotation === 'caged') ? scaleCaged[newIndex] : scaleEuro[newIndex];
+            });
+        }
+
+        function renderSongSheet() {
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+
+            const sheet = document.getElementById('song-sheet');
+            sheet.innerHTML = '';
+
+            const lines = (song.content || '').split('\n');
+
+            lines.forEach(line => {
+                if (line.trim() === '') {
+                    sheet.innerHTML += '<div style="height:1.1em;"></div>';
+                    return;
+                }
+
+                const regex = /\[(.*?)\]/g;
+                let match;
+                let lyricStr = '';
+                let chordLineArr = [];
+                let lastIndex = 0;
+
+                while ((match = regex.exec(line)) !== null) {
+                    lyricStr += line.substring(lastIndex, match.index);
+                    chordLineArr.push({ pos: lyricStr.length, chord: transposeChordStr(match[1]) });
+                    lastIndex = regex.lastIndex;
+                }
+                lyricStr += line.substring(lastIndex);
+
+                if (chordLineArr.length > 0) {
+                    let chordStr = '';
+                    let currentPos = 0;
+
+                    chordLineArr.forEach(item => {
+                        const spacesNeeded = Math.max(0, item.pos - currentPos);
+                        chordStr += ' '.repeat(spacesNeeded) + item.chord;
+                        currentPos = item.pos + item.chord.length;
+                    });
+
+                    sheet.innerHTML += `
+                        <div class="line-pair">
+                            <span class="chord-line">${chordStr}</span>
+                            <span class="lyric-line">${lyricStr}</span>
+                        </div>`;
+                } else {
+                    sheet.innerHTML += `<div class="line-pair"><span class="lyric-line">${lyricStr}</span></div>`;
+                }
+            });
+        }
+
+        function toggleScroll() {
+            const btn = document.getElementById('btn-scroll');
+            if (scrollInterval) {
+                stopScroll();
+            } else {
+                const speedInput = document.getElementById('scroll-speed');
+                const speed = parseInt(speedInput.value) || 3;
+                scrollInterval = setInterval(() => {
+                    window.scrollBy(0, 1);
+                }, 60 / speed);
+
+                btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                btn.innerHTML = `<i class="fa-solid fa-pause text-xs"></i> Pausar`;
+            }
+        }
+
+        function stopScroll() {
+            if (scrollInterval) {
+                clearInterval(scrollInterval);
+                scrollInterval = null;
+            }
+            const btn = document.getElementById('btn-scroll');
+            if (btn) {
+                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i> Auto-Scroll`;
+            }
+        }
+
+        async function createNewSetlist() {
+            const name = prompt("Nombre del nuevo repertorio (Ej. Concierto Verano):");
+            if (name && name.trim()) {
+                try {
+                    await db.collection('setlists').add({ name: name.trim(), songIds: [] });
+                } catch (e) {
+                    showModal("Error", e.message);
+                }
+            }
+        }
+
+        function renderSetlists() {
+            const container = document.getElementById('setlists-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (setlists.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 bg-slate-800/40 rounded-2xl border border-dashed border-slate-700">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-600 mb-3 block"></i>
+                        <p class="text-slate-400 font-medium">No hay repertorios creados</p>
+                        <p class="text-xs text-slate-500 mt-1">Crea tu primer repertorio para organizar actuaciones</p>
+                    </div>`;
+                return;
+            }
+
+            setlists.forEach(setlist => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl space-y-4 shadow-md";
+
+                let html = `
+                    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-ul text-indigo-400"></i> ${setlist.name}
+                            <span class="text-xs text-slate-400 font-normal">(${(setlist.songIds || []).length} canciones)</span>
+                        </h3>
+                        <button onclick="deleteSetlist('${setlist.id}')" class="text-rose-400 hover:text-rose-300 text-xs px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 transition">
+                            <i class="fa-solid fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+
+                    <!-- Buscador para añadir canciones -->
+                    <div class="relative">
+                        <input type="text" placeholder="🔍 Buscar y añadir canción al repertorio..." 
+                            oninput="handleSetlistSearch(this, '${setlist.id}')" 
+                            onblur="setTimeout(() => hideDropdown(this), 200)"
+                            class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        <div class="search-results absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl max-h-48 overflow-y-auto z-20 hidden shadow-xl"></div>
+                    </div>
+
+                    <!-- Lista de canciones en el repertorio con Drag & Drop -->
+                    <div class="setlist-songs-container space-y-2" data-setlist-id="${setlist.id}">`;
+
+                if (setlist.songIds && setlist.songIds.length > 0) {
+                    setlist.songIds.forEach((id, index) => {
+                        const s = songs.find(x => x.id === id);
+                        if (s) {
+                            html += `
+                            <div class="draggable-item flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 transition" 
+                                 draggable="true" 
+                                 data-index="${index}" 
+                                 data-setlist-id="${setlist.id}">
+                                
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <!-- Icono de Agarre para Drag and Drop -->
+                                    <div class="drag-handle text-slate-600 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 text-sm">
+                                        <i class="fa-solid fa-grip-vertical"></i>
+                                    </div>
+
+                                    <span class="w-6 h-6 rounded-lg bg-slate-800 text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0">${index + 1}</span>
+                                    
+                                    <div class="cursor-pointer truncate flex-1" onclick="openSong('${s.id}')">
+                                        <p class="text-sm font-semibold text-white hover:text-indigo-300 transition truncate">${s.title}</p>
+                                        <p class="text-xs text-slate-400 truncate">${s.artist}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-1">
+                                    <!-- Botones mover arriba / abajo -->
+                                    <button onclick="moveSongInSetlist('${setlist.id}', ${index}, -1)" title="Subir" class="text-slate-500 hover:text-indigo-400 p-1.5 transition text-xs">
+                                        <i class="fa-solid fa-arrow-up"></i>
+                                    </button>
+                                    <button onclick="moveSongInSetlist('${setlist.id}', ${index}, 1)" title="Bajar" class="text-slate-500 hover:text-indigo-400 p-1.5 transition text-xs">
+                                        <i class="fa-solid fa-arrow-down"></i>
+                                    </button>
+
+                                    <!-- Eliminar del repertorio -->
+                                    <button onclick="removeFromSetlist('${setlist.id}', '${s.id}')" title="Quitar del repertorio" class="text-slate-500 hover:text-rose-400 p-1.5 transition ml-1">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>`;
+                        }
+                    });
+                } else {
+                    html += `<p class="text-xs text-slate-500 italic py-2">Repertorio vacío. Utiliza la barra para buscar y añadir canciones.</p>`;
+                }
+
+                html += `</div>`;
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            });
+
+            // Asignar Event Listeners para Drag and Drop
+            initDragAndDropListeners();
+        }
+
+        // Configuración de eventos Drag and Drop
+        function initDragAndDropListeners() {
+            const items = document.querySelectorAll('.draggable-item');
+            
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('dragleave', handleDragLeave);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragend', handleDragEnd);
+
+                // Soporte para pantalla táctil en móviles
+                const handle = item.querySelector('.drag-handle');
+                if (handle) {
+                    handle.addEventListener('touchstart', handleTouchStart, { passive: true });
+                    handle.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    handle.addEventListener('touchend', handleTouchEnd);
+                }
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            draggedSetlistId = this.getAttribute('data-setlist-id');
+            dragStartIndex = parseInt(this.getAttribute('data-index'));
+
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragStartIndex);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            if (this === draggedItem) return;
+
+            const targetSetlistId = this.getAttribute('data-setlist-id');
+            if (targetSetlistId === draggedSetlistId) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (!draggedItem || this === draggedItem) return;
+
+            const targetSetlistId = this.getAttribute('data-setlist-id');
+            const dragEndIndex = parseInt(this.getAttribute('data-index'));
+
+            if (draggedSetlistId === targetSetlistId && dragStartIndex !== dragEndIndex) {
+                await reorderSetlist(draggedSetlistId, dragStartIndex, dragEndIndex);
+            }
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+            draggedItem = null;
+            draggedSetlistId = null;
+            dragStartIndex = -1;
+        }
+
+        // Eventos Táctiles Móviles
+        let touchTargetItem = null;
+
+        function handleTouchStart(e) {
+            const item = this.closest('.draggable-item');
+            if (!item) return;
+
+            draggedItem = item;
+            draggedSetlistId = item.getAttribute('data-setlist-id');
+            dragStartIndex = parseInt(item.getAttribute('data-index'));
+            item.classList.add('dragging');
+        }
+
+        function handleTouchMove(e) {
+            if (!draggedItem) return;
+            e.preventDefault(); // Previene scroll durante arrastre
+
+            const touch = e.touches[0];
+            const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (!targetElement) return;
+
+            const targetItem = targetElement.closest('.draggable-item');
+            document.querySelectorAll('.draggable-item').forEach(i => i.classList.remove('drag-over'));
+
+            if (targetItem && targetItem !== draggedItem && targetItem.getAttribute('data-setlist-id') === draggedSetlistId) {
+                touchTargetItem = targetItem;
+                targetItem.classList.add('drag-over');
+            }
+        }
+
+        async function handleTouchEnd(e) {
+            if (!draggedItem) return;
+
+            draggedItem.classList.remove('dragging');
+            document.querySelectorAll('.draggable-item').forEach(i => i.classList.remove('drag-over'));
+
+            if (touchTargetItem) {
+                const dragEndIndex = parseInt(touchTargetItem.getAttribute('data-index'));
+                if (dragStartIndex !== dragEndIndex) {
+                    await reorderSetlist(draggedSetlistId, dragStartIndex, dragEndIndex);
+                }
+            }
+
+            draggedItem = null;
+            draggedSetlistId = null;
+            touchTargetItem = null;
+            dragStartIndex = -1;
+        }
+
+        // Reordenar elementos dentro de la lista
+        async function reorderSetlist(setlistId, fromIndex, toIndex) {
+            const setlist = setlists.find(s => s.id === setlistId);
+            if (!setlist || !setlist.songIds) return;
+
+            const newSongIds = [...setlist.songIds];
+            const [movedSong] = newSongIds.splice(fromIndex, 1);
+            newSongIds.splice(toIndex, 0, movedSong);
+
+            try {
+                // Actualización en Firestore
+                await db.collection('setlists').doc(setlistId).update({ songIds: newSongIds });
+            } catch (err) {
+                console.error("Error al reordenar el repertorio:", err);
+                showModal("Error", "No se pudo actualizar el orden de las canciones.");
+            }
+        }
+
+        async function moveSongInSetlist(setlistId, currentIndex, direction) {
+            const setlist = setlists.find(s => s.id === setlistId);
+            if (!setlist || !setlist.songIds) return;
+
+            const targetIndex = currentIndex + direction;
+
+            if (targetIndex >= 0 && targetIndex < setlist.songIds.length) {
+                await reorderSetlist(setlistId, currentIndex, targetIndex);
+            }
+        }
+
+        function handleSetlistSearch(inputEl, setlistId) {
+            const query = inputEl.value.toLowerCase().trim();
+            const resultsEl = inputEl.nextElementSibling;
+            resultsEl.innerHTML = '';
+
+            if (query.length < 1) {
+                resultsEl.classList.add('hidden');
+                return;
+            }
+
+            const filtered = songs.filter(s => s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query));
+
+            if (filtered.length === 0) {
+                resultsEl.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">No hay coincidencias</div>`;
+            } else {
+                filtered.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = "p-2.5 hover:bg-slate-800 text-xs text-slate-200 cursor-pointer flex justify-between items-center border-b border-slate-800/50 last:border-0";
+                    div.innerText = `${s.title} (${s.artist})`;
+                    div.onmousedown = () => {
+                        addToSetlist(setlistId, s.id);
+                        inputEl.value = '';
+                    };
+                    resultsEl.appendChild(div);
+                });
+            }
+            resultsEl.classList.remove('hidden');
+        }
+
+        function hideDropdown(inputEl) {
+            const resultsEl = inputEl.nextElementSibling;
+            if (resultsEl) resultsEl.classList.add('hidden');
+        }
+
+        async function addToSetlist(setlistId, songId) {
+            const setlist = setlists.find(s => s.id === setlistId);
+            if (!setlist) return;
+
+            const songIds = setlist.songIds || [];
+            if (!songIds.includes(songId)) {
+                songIds.push(songId);
+                await db.collection('setlists').doc(setlistId).update({ songIds });
+            }
+        }
+
+        async function removeFromSetlist(setlistId, songId) {
+            const setlist = setlists.find(s => s.id === setlistId);
+            if (!setlist) return;
+
+            const songIds = (setlist.songIds || []).filter(id => id !== songId);
+            await db.collection('setlists').doc(setlistId).update({ songIds });
+        }
+
+        async function deleteSetlist(id) {
+            if (confirm("¿Seguro que deseas eliminar este repertorio?")) {
+                await db.collection('setlists').doc(id).delete();
+            }
+        }
+
+        function exportData() {
+            const data = JSON.stringify({ songs, setlists }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `QuevedoSongBook_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.songs && Array.isArray(data.songs)) {
+                        for (let s of data.songs) {
+                            await db.collection('songs').add({ 
+                                title: s.title || 'Sin Título', 
+                                artist: s.artist || 'Desconocido', 
+                                content: s.content || '' 
+                            });
+                        }
+                        showModal("Importación Completa", "Se han cargado correctamente todas las canciones en Firestore.");
+                        showView('home');
+                    } else {
+                        showModal("Formato Inválido", "El archivo JSON no contiene un formato de canciones válido.");
+                    }
+                } catch (err) {
+                    showModal("Error al Importar", "Ocurrió un error leyendo el archivo: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Inicio por defecto en el buscador principal
+        showView('home');
+    </script>
+</body>
+</html>
