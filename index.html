@@ -38,7 +38,7 @@
                 <div>
                     <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
                         QuevedoSongBook
-                        <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-normal">v2.7</span>
+                        <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-normal">v2.8</span>
                     </h1>
                     <p class="text-xs text-slate-400 hidden sm:block">Gestor de Acordes y Repertorios Pro</p>
                 </div>
@@ -66,7 +66,7 @@
         </div>
     </header>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6">
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col">
         <!-- VISTA HOME -->
         <section id="view-home" class="space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -132,23 +132,48 @@
         </section>
 
         <!-- VISTA VISOR -->
-        <section id="view-viewer" class="hidden space-y-4">
+        <section id="view-viewer" class="hidden flex-1 flex flex-col space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 border border-slate-700/80 p-4 rounded-xl shadow-md">
                 <div>
                     <h2 id="viewer-title" class="text-2xl font-bold text-white leading-tight">Título</h2>
                     <p id="viewer-artist" class="text-sm font-medium text-indigo-400">Artista</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="editCurrentSong()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition">
-                        <i class="fa-solid fa-pen-to-square"></i> Editar
-                    </button>
-                    <button onclick="showView('home')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition">
-                        <i class="fa-solid fa-arrow-left"></i> Volver
-                    </button>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Controles de Transposición -->
+                    <div class="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1">
+                        <button onclick="transpose(-1)" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:bg-slate-800 rounded font-bold" title="Bajar medio tono">-</button>
+                        <span id="transpose-val" class="px-2 text-xs font-semibold text-indigo-400 min-w-[3.5rem] text-center">Tono: 0</span>
+                        <button onclick="transpose(1)" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:bg-slate-800 rounded font-bold" title="Subir medio tono">+</button>
+                    </div>
+
+                    <!-- Controles de Autoscroll con Flechas -->
+                    <div class="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-1 gap-1">
+                        <button id="btn-autoscroll" onclick="toggleAutoScroll()" class="px-3 h-8 flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded transition">
+                            <i class="fa-solid fa-play text-[10px]" id="scroll-icon"></i> Scroll
+                        </button>
+                        <button onclick="changeScrollSpeed(-1)" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:bg-slate-800 rounded font-bold" title="Disminuir velocidad">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        <span id="scroll-speed-val" class="text-xs font-mono text-slate-300 px-1">1x</span>
+                        <button onclick="changeScrollSpeed(1)" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:bg-slate-800 rounded font-bold" title="Aumentar velocidad">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="editCurrentSong()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition">
+                            <i class="fa-solid fa-pen-to-square"></i> Editar
+                        </button>
+                        <button onclick="showView('home')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg transition">
+                            <i class="fa-solid fa-arrow-left"></i> Volver
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div id="song-sheet" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-mono-chords overflow-x-auto shadow-inner text-slate-200"></div>
+            <!-- Contenedor con scroll interno independiente -->
+            <div id="song-sheet" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-mono-chords overflow-y-auto max-h-[calc(100vh-220px)] shadow-inner text-slate-200 flex-1"></div>
         </section>
 
         <!-- VISTA SETLISTS -->
@@ -213,6 +238,13 @@
         let songs = [];
         let setlists = [];
         let currentSongId = null;
+        let transposeSteps = 0;
+        let autoScrollInterval = null;
+        let scrollSpeed = 1;
+
+        // Mapeo de escalas cromáticas (Americana y Latina)
+        const chromaticScaleEN = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const chromaticScaleES = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 
         function showModal(title, message) {
             document.getElementById('modal-title').innerText = title;
@@ -314,6 +346,7 @@
         }
 
         function showView(viewName) {
+            stopAutoScroll();
             document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
             document.getElementById(`view-${viewName}`).classList.remove('hidden');
             if (viewName === 'home') renderSongList();
@@ -379,8 +412,52 @@
             }
         }
 
-        // Renderizador unificado para acordes en corchetes [ ] (Soporta notación latina: Sol, Do, Re, etc.)
-        function renderChordSheet(text) {
+        // Lógica de transposición de un acorde individual
+        function transposeChord(chord, steps) {
+            if (!steps) return chord;
+            
+            // Regex para capturar notas raíz en español o inglés + posibles alteración (#/b)
+            const regex = /^(Sol|Do|Re|Mi|Fa|La|Si|[A-G])([#b]?)(.*)$/i;
+            const match = chord.match(regex);
+            if (!match) return chord;
+
+            let root = match[1];
+            let acc = match[2];
+            let suffix = match[3];
+
+            // Normalización
+            root = root.charAt(0).toUpperCase() + root.slice(1).toLowerCase();
+
+            let scale = chromaticScaleEN;
+            let isES = false;
+
+            if (chromaticScaleES.some(n => n.toLowerCase() === root.toLowerCase())) {
+                scale = chromaticScaleES;
+                isES = true;
+            }
+
+            let fullNote = root + acc;
+            
+            // Manejo de bemoles simples
+            if (acc === 'b') {
+                const flatMap = {
+                    "Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#",
+                    "Reb": "Do#", "Mib": "Re#", "Solb": "Fa#", "Lab": "Sol#", "Sib": "La#"
+                };
+                if (flatMap[fullNote]) fullNote = flatMap[fullNote];
+            }
+
+            let idx = scale.findIndex(n => n.toLowerCase() === fullNote.toLowerCase());
+            if (idx === -1) return chord;
+
+            let newIdx = (idx + steps) % 12;
+            if (newIdx < 0) newIdx += 12;
+
+            return scale[newIdx] + suffix;
+        }
+
+        // Renderizador con transposición integrada
+        function renderChordSheet(text, steps = 0) {
             if (!text) return '';
             const lines = text.split('\n');
             let html = '';
@@ -398,14 +475,13 @@
                 let match;
 
                 while ((match = regex.exec(line)) !== null) {
-                    const chord = match[1];
+                    const originalChord = match[1];
+                    const chord = transposeChord(originalChord, steps);
                     const matchIndex = match.index;
 
-                    // Texto antes del acorde
                     const textBefore = line.substring(currentIndex, matchIndex);
                     lyricLine += textBefore;
 
-                    // Ajuste de espacios para alinear el acorde en la línea superior
                     while (chordLine.length < lyricLine.length) {
                         chordLine += ' ';
                     }
@@ -414,7 +490,6 @@
                     currentIndex = regex.lastIndex;
                 }
 
-                // Texto restante tras el último acorde
                 lyricLine += line.substring(currentIndex);
 
                 html += `<div class="line-pair">` +
@@ -426,13 +501,77 @@
             return html;
         }
 
+        function transpose(delta) {
+            transposeSteps += delta;
+            document.getElementById('transpose-val').innerText = `Tono: ${transposeSteps > 0 ? '+' : ''}${transposeSteps}`;
+            const song = songs.find(s => s.id === currentSongId);
+            if (song) {
+                document.getElementById('song-sheet').innerHTML = renderChordSheet(song.content, transposeSteps);
+            }
+        }
+
+        // Control de autoscroll en la zona interna de la hoja de la canción
+        function toggleAutoScroll() {
+            if (autoScrollInterval) {
+                stopAutoScroll();
+            } else {
+                startAutoScroll();
+            }
+        }
+
+        function startAutoScroll() {
+            const container = document.getElementById('song-sheet');
+            const btn = document.getElementById('btn-autoscroll');
+            const icon = document.getElementById('scroll-icon');
+            
+            btn.classList.replace('bg-indigo-600', 'bg-amber-600');
+            btn.classList.replace('hover:bg-indigo-500', 'hover:bg-amber-500');
+            icon.className = "fa-solid fa-pause text-[10px]";
+
+            autoScrollInterval = setInterval(() => {
+                container.scrollTop += 1;
+                if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+                    stopAutoScroll();
+                }
+            }, Math.max(10, 60 / scrollSpeed));
+        }
+
+        function stopAutoScroll() {
+            if (autoScrollInterval) {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+            const btn = document.getElementById('btn-autoscroll');
+            const icon = document.getElementById('scroll-icon');
+            if (btn && icon) {
+                btn.classList.replace('bg-amber-600', 'bg-indigo-600');
+                btn.classList.replace('hover:bg-amber-500', 'hover:bg-indigo-500');
+                icon.className = "fa-solid fa-play text-[10px]";
+            }
+        }
+
+        function changeScrollSpeed(delta) {
+            scrollSpeed = Math.min(Math.max(1, scrollSpeed + delta), 5);
+            document.getElementById('scroll-speed-val').innerText = `${scrollSpeed}x`;
+            if (autoScrollInterval) {
+                stopAutoScroll();
+                startAutoScroll();
+            }
+        }
+
         function openSong(id) {
             const song = songs.find(s => s.id === id);
             if (!song) return;
             currentSongId = id;
+            transposeSteps = 0;
+            document.getElementById('transpose-val').innerText = 'Tono: 0';
             document.getElementById('viewer-title').innerText = song.title;
             document.getElementById('viewer-artist').innerText = song.artist;
-            document.getElementById('song-sheet').innerHTML = renderChordSheet(song.content);
+            
+            const sheet = document.getElementById('song-sheet');
+            sheet.innerHTML = renderChordSheet(song.content, 0);
+            sheet.scrollTop = 0;
+            
             showView('viewer');
         }
 
