@@ -151,11 +151,11 @@ const allCats=()=>{const s=new Set(CATS_BASE);songs.forEach(x=>(x.categorias||[]
 function renderCats(){$('e-cats').innerHTML=allCats().map(c=>`<button class="chip${ecats.includes(c)?' on':''}" onclick="togCat(this.dataset.c)" data-c="${esc(c).replace(/"/g,'&quot;')}">${esc(c)}</button>`).join('')}
 function togCat(c){ecats=ecats.includes(c)?ecats.filter(x=>x!=c):[...ecats,c];renderCats()}
 function addCat(){const i=$('e-nc'),n=i.value.trim();if(!n)return;const ex=allCats().find(c=>c.toLowerCase()==n.toLowerCase());if(!ecats.includes(ex||n))ecats=[...ecats,ex||n];i.value='';renderCats()}
-function newSong(){cur=null;$('et').textContent='Nueva canción';$('e-t').value=$('e-a').value=$('e-c').value='';$('e-d').classList.add('hide');go('edit');prev()}
-function editSong(){$('et').textContent='Editar canción';$('e-t').value=cur.title||'';$('e-a').value=cur.artist||'';$('e-c').value=toEditable(cur.content);$('e-d').classList.remove('hide');go('edit');prev()}
+function newSong(){cur=null;$('et').textContent='Nueva canción';$('e-t').value=$('e-a').value=$('e-c').value='';$('e-d').classList.add('hide');ecats=[];go('edit');renderCats();prev()}
+function editSong(){$('et').textContent='Editar canción';$('e-t').value=cur.title||'';$('e-a').value=cur.artist||'';$('e-c').value=toEditable(cur.content);$('e-d').classList.remove('hide');ecats=[...(cur.categorias||[])];go('edit');renderCats();prev()}
 function prev(){tone=0;sheet($('e-p'),toInline($('e-c').value))}
 async function saveSong(){const t=$('e-t').value.trim();if(!t)return alert('Falta el título');
-  const d={title:t,artist:$('e-a').value.trim(),content:toInline($('e-c').value),categorias:ecats,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+   const d={title:t,artist:$('e-a').value.trim(),content:toInline($('e-c').value),categorias:ecats,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
  try{cur?await db.collection('songs').doc(cur.id).update(d):await db.collection('songs').add(d);go('home')}catch(e){alert('Error al guardar: '+e.message)}}
 async function delSong(){if(confirm('¿Eliminar esta canción?')){await db.collection('songs').doc(cur.id).delete();cur=null;go('home')}}
 // ---- autoscroll ----
