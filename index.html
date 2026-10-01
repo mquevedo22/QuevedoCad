@@ -68,7 +68,13 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 
 <script>
 // ====== PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ======
-const firebaseConfig={apiKey:"TU_API_KEY",authDomain:"TU_PROYECTO.firebaseapp.com",projectId:"TU_PROYECTO",appId:"TU_APP_ID"};
+const firebaseConfig={ apiKey: "AIzaSyCSCK38tcDF156F_doBCUnDzjzwuk6bQI0",
+            authDomain: "quevedosongbook.firebaseapp.com",
+            projectId: "quevedosongbook",
+            storageBucket: "quevedosongbook.firebasestorage.app",
+            messagingSenderId: "280589957991",
+            appId: "1:280589957991:web:e62cc9745f4f10d7340dc2"
+};
 // =====================================================
 const $=id=>document.getElementById(id),esc=s=>String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const SPD=[1,2,3,4,5,6,7,8,9,10],PX=[4,7,11,16,22,30,40,55,75,100];let sc={on:false,l:3,pos:0,last:0,set:0};
