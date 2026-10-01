@@ -86,26 +86,33 @@ setTheme(localStorage.theme||(matchMedia('(prefers-color-scheme: light)').matche
 // ---- acordes ----
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],EU=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
 const BASE={C:0,D:2,E:4,F:5,G:7,A:9,B:11,Do:0,Re:2,Mi:4,Fa:5,Sol:7,La:9,Si:11};
-const R='(?:Sol|Do|Re|Mi|Fa|La|Si|[A-G])(?:#|b)?',CRE=new RegExp('^'+R+'(?:maj|min|dim|aug|sus|add|m|M|º|°|ø|\\+|-|\\d|#|b|\\(|\\))*(?:/'+R+')?$');
-const isChord=t=>CRE.test(t),isChordLine=l=>{const k=l.trim().split(/\s+/);return l.trim()!==''&&k.every(t=>isChord(t)||/^(\||x\d+)$/i.test(t))};
-function rdNote(s){if(/^Fa(dd|ug)/.test(s))return{i:5,n:1};const m=s.match(/^(Sol|Do|Re|Mi|Fa|La|Si|[A-G])(#|b)?/);return{i:(BASE[m[1]]+(m[2]=='#'?1:m[2]=='b'?-1:0)+12)%12,n:m[0].length}}
+const NOTE='(?:SOL|Sol|DO|Do|RE|Re|MI|Mi|FA|Fa|LA|La|SI|Si|[A-G])(?:#|b|♯|♭)?';
+const QUAL='(?:[Mm]aj|[Mm]in|[Dd]im|[Aa]ug|[Ss]us|[Aa]dd|[Aa]lt|m|M|º|°|ø|Δ|\\+|-|\\d|#|b|♯|♭|\\(|\\)|,|\\*|/\\d)*';
+const CRE=new RegExp('^'+NOTE+QUAL+'(?:/'+NOTE+')?[.,;:]*$'),BR=new RegExp('/(?='+NOTE+')');
+const NEU=/^(\(?[xX]\d+\)?|[|‖:%]+|[-–—.]+|\/+|(?:intro|estribillo|puente|solo|coda|fin|final|bis|riff|verso|coro|estrofa|outro|interludio|capo)\d*:?)$/i;
+const isChord=t=>CRE.test(t),isChordLine=l=>{const k=l.trim().split(/\s+/);return l.trim()!==''&&k.some(isChord)&&k.every(t=>isChord(t)||NEU.test(t))};
+function rdNote(s){if(/^Fa(dd|ug|lt)/.test(s))return{i:5,n:1};const m=s.match(/^(SOL|Sol|DO|Do|RE|Re|MI|Mi|FA|Fa|LA|La|SI|Si|[A-G])(#|b|♯|♭)?/),w=m[1].length>1?m[1][0]+m[1].slice(1).toLowerCase():m[1],a=m[2];
+ return{i:(BASE[w]+(a=='#'||a=='♯'?1:a=='b'||a=='♭'?-1:0)+12)%12,n:m[0].length}}
 const nm=i=>(notation=='eu'?EU:SH)[((i%12)+12)%12];
-function conv(ch){const r=rdNote(ch);let rest=ch.slice(r.n),bass='';const s=rest.indexOf('/');
+function conv(ch){const r=rdNote(ch);let rest=ch.slice(r.n),bass='';const s=rest.search(BR);
  if(s>=0){const b=rdNote(rest.slice(s+1));bass='/'+nm(b.i+tone)+rest.slice(s+1+b.n);rest=rest.slice(0,s)}return nm(r.i+tone)+rest+bass}
+const convAny=t=>t.split(/([\s|–—-]+)/).map(p=>isChord(p)?conv(p):p).join(''),fmt=c=>isChord(c)?conv(c):convAny(c);
 const TOK=/\[([^\]]+)\]/g;
 function split(line){let plain='',pos=[],p=0,m;TOK.lastIndex=0;while((m=TOK.exec(line))){plain+=line.slice(p,m.index);
- if(isChord(m[1]))pos.push({p:plain.length,c:m[1]});else plain+=m[0];p=TOK.lastIndex}return{plain:plain+line.slice(p),pos}}
+ if(m[1].trim())pos.push({p:plain.length,c:m[1].trim()});p=TOK.lastIndex}return{plain:plain+line.slice(p),pos}}
 function row(pos,f){let r='';pos.forEach(({p,c})=>{if(r.length<p)r+=' '.repeat(p-r.length);else if(r.length)r+=' ';r+=f(c)});return r}
-function toInline(text){const L=text.replace(/\r/g,'').split('\n'),o=[];
+const xt=l=>{let o='';for(const c of l){if(c=='\t')o+=' '.repeat(8-o.length%8);else o+=c}return o},lblRe=/^\s*\[([^\]]+)\]\s*$/;
+function toInline(text){const L=(text||'').replace(/\r/g,'').replace(/\u00a0/g,' ').split('\n').map(xt),o=[];
  for(let i=0;i<L.length;i++){const l=L[i];if(isChordLine(l)){const toks=[...l.matchAll(/\S+/g)],n=L[i+1];
-  const lyr=n!==undefined&&n.trim()!==''&&!isChordLine(n)&&!/^\s*\[[^\]]+\]\s*$/.test(n)&&!split(n).pos.length;
-  let y=lyr?n:' '.repeat(toks.length?toks[toks.length-1].index:0);
+  const lyr=n!==undefined&&n.trim()!==''&&!isChordLine(n)&&!lblRe.test(n)&&!split(n).pos.length;
+  let y=lyr?n:' '.repeat(toks[toks.length-1].index);
   for(let k=toks.length-1;k>=0;k--){const t=toks[k];if(y.length<t.index)y=y.padEnd(t.index);y=y.slice(0,t.index)+'['+t[0]+']'+y.slice(t.index)}
-  o.push(y.replace(/\s+$/,m=>m));if(lyr)i++}else o.push(l.replace(/\s+$/,''))}return o.join('\n')}
-function toEditable(c){return(c||'').split('\n').map(l=>{const s=split(l);if(!s.pos.length)return l;const r=row(s.pos,x=>x);return s.plain.trim()?r+'\n'+s.plain:r}).join('\n')}
-function sheet(el,content){el.innerHTML=(content||'').split('\n').map(l=>{if(l.trim()==='')return'<div style="height:1em"></div>';
- const s=split(l);if(!s.pos.length){return/^\s*\[[^\]]+\]\s*$/.test(l)?`<div class="lab">${esc(l.replace(/[\[\]]/g,'').trim())}</div>`:`<div class="l">${esc(s.plain)}</div>`}
- return`<div class="pair"><span class="c">${esc(row(s.pos,conv))}</span>${s.plain.trim()?`<span class="l">${esc(s.plain)}</span>`:''}</div>`}).join('')}
+  o.push(y.replace(/\s+$/,''));if(lyr)i++}else o.push(l.replace(/\s+$/,''))}return o.join('\n')}
+function toEditable(c){return(c||'').split('\n').map(l=>{const lb=l.match(lblRe);if(lb&&!isChord(lb[1].trim()))return l;const s=split(l);if(!s.pos.length)return l;const r=row(s.pos,x=>x);return s.plain.trim()?r+'\n'+s.plain:r}).join('\n')}
+function sheet(el,content){el.innerHTML=toInline(content).split('\n').map(l=>{if(l.trim()==='')return'<div style="height:1em"></div>';
+ const lb=l.match(lblRe);if(lb&&!isChord(lb[1].trim()))return`<div class="lab">${esc(lb[1].trim())}</div>`;
+ const s=split(l);if(!s.pos.length)return`<div class="l">${esc(s.plain)}</div>`;
+ return`<div class="pair"><span class="c">${esc(row(s.pos,fmt))}</span>${s.plain.trim()?`<span class="l">${esc(s.plain)}</span>`:''}</div>`}).join('')}
 // ---- navegación ----
 const VIEWS=['login','home','song','edit','lists','list'];
 function go(v){stopSc();VIEWS.forEach(x=>$('v-'+x).classList.toggle('hide',x!=v));scrollTo(0,0);
