@@ -68,7 +68,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 
 <main id="v-list" class="hide"><div class="row" style="margin-bottom:1rem"><button onclick="go('lists')">←</button><h2 id="ln" style="margin:0"></h2><button class="p sp" onclick="openPicker()">+ Añadir canción</button><button class="d" onclick="delList()">Eliminar</button></div><p class="mu">Arrastra ☰ para cambiar el orden. Pulsa una canción para verla.</p><div id="ls"></div></main>
 
-<div id="pk" class="modal hide" onclick="if(event.target==this)this.classList.add('hide')"><div class="box"><input id="pq" placeholder="Buscar canción…" oninput="renderPicker()"><div id="pr" style="margin-top:.6rem"></div></div></div>
+<div id="pk" class="modal hide" onclick="if(event.target==this)this.classList.add('hide')"><div class="box"><input id="pq" placeholder="Buscar canción…" oninput="renderPicker()"><div id="pf" class="row" style="margin-top:.6rem"></div><div id="pr" style="margin-top:.6rem"></div></div></div>
 
 <script>
 // ====== PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ======
@@ -189,8 +189,14 @@ let sortable;function renderList(){const l=lists.find(x=>x.id==curList);if(!l)re
  sortable&&sortable.destroy();sortable=new Sortable($('ls'),{handle:'.h',animation:150,onEnd:()=>db.collection('setlists').doc(l.id).update({songIds:[...$('ls').children].map(e=>e.dataset.id).filter(Boolean)})})}
 const rmSong=id=>db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayRemove(id)});
 async function delList(){if(confirm('¿Eliminar este repertorio?')){await db.collection('setlists').doc(curList).delete();go('lists')}}
-function openPicker(){$('pk').classList.remove('hide');$('pq').value='';renderPicker();$('pq').focus()}
-function renderPicker(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[];
+let ptags=[];
+function renderPicker(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[],av=songs.filter(s=>!have.includes(s.id)),U={};
+ av.forEach(s=>(s.categorias||[]).forEach(c=>U[c]=(U[c]||0)+1));ptags=ptags.filter(t=>U[t]);
+ $('pf').innerHTML=allCats().filter(c=>U[c]).map(c=>`<button class="chip${ptags.includes(c)?' on':''}" onclick="togP(this.dataset.c)" data-c="${esc(c).replace(/"/g,'&quot;')}">${esc(c)} (${U[c]})</button>`).join('')+(ptags.length?'<button class="chip" onclick="clrP()">✕ Quitar filtros</button>':'');
+ $('pr').innerHTML=av.filter(s=>((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q)&&ptags.every(t=>(s.categorias||[]).includes(t))).map(s=>`<div class="item" onclick="addSong('${s.id}')"><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span>${(s.categorias||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}</div></div>`).join('')||'<p class="mu">Sin resultados.</p>'}
+const togP=c=>{ptags=ptags.includes(c)?ptags.filter(x=>x!=c):[...ptags,c];renderPicker()},clrP=()=>{ptags=[];renderPicker()};
+function openPicker(){ptags=[];$('pk').classList.remove('hide');$('pq').value='';renderPicker();$('pq').focus()}
+function renderPickerOld(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[];
  $('pr').innerHTML=songs.filter(s=>!have.includes(s.id)&&((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q)).map(s=>`<div class="item" onclick="addSong('${s.id}')"><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span></div></div>`).join('')||'<p class="mu">Sin resultados.</p>'}
 async function addSong(id){await db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayUnion(id)});$('pk').classList.add('hide')}
 </script></body></html>
