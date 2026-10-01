@@ -32,6 +32,8 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 .modal{position:fixed;inset:0;background:#0008;z-index:50;display:flex;justify-content:center;padding-top:8vh}
 .box{background:var(--hd);border:1px solid var(--bd);border-radius:12px;width:min(480px,92vw);max-height:70vh;overflow:auto;padding:1rem;align-self:flex-start}
 #err{color:#ef4444;font-size:.9rem}
+.chip{border-radius:999px;padding:.3rem .8rem;font-size:.85rem}
+.chip.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
 </style></head><body>
 <header><span class="brand" onclick="go('home')">♪ Quevedo Songbook ♪ </span>
 <button onclick="go('home')">Canciones</button><button onclick="go('lists')">Repertorios</button>
@@ -55,6 +57,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 
 <main id="v-edit" class="hide"><h2 id="et">Nueva canción</h2>
 <div class="row" style="margin-bottom:.6rem"><input id="e-t" placeholder="Título" style="flex:2"><input id="e-a" placeholder="Artista" style="flex:1"></div>
+            <div style="margin-bottom:.6rem"><div class="mu" style="margin-bottom:.3rem">Categorías (momento de la misa)</div><div id="e-cats" class="row"></div><div class="row" style="margin-top:.4rem"><input id="e-nc" placeholder="Nueva categoría…" style="max-width:220px" onkeydown="if(event.key=='Enter'){event.preventDefault();addCat()}"><button onclick="addCat()">+ Crear</button></div></div>
 <p class="mu">Pega la canción con los acordes <b>encima</b> de la letra (como en cifraclub o lacuerda). Se convierte sola y conserva transposición, notación y scroll.</p>
 <textarea id="e-c" oninput="prev()" wrap="off" placeholder="Am      G&#10;Camino de vuelta a casa"></textarea>
 <div class="row" style="margin:.6rem 0"><button class="p" onclick="saveSong()">Guardar</button><button onclick="go('home')">Cancelar</button><button id="e-d" class="d hide sp" onclick="delSong()">Eliminar</button></div>
@@ -141,11 +144,18 @@ function togNot(){notation=notation=='eu'?'caged':'eu';localStorage.nt=notation;
 function backFromSong(){curList?openList(curList):go('home')}
 function nav(d){const l=lists.find(x=>x.id==curList),i=l.songIds.indexOf(cur.id),n=l.songIds[i+d];if(n)openSong(n,curList)}
 // ---- editor ----
+            // ---- categorías ----
+const CATS_BASE=['Entrada','Gloria','Salmo','Aleluya','Ofertorio','Santo','Cordero','Comunión','Final'];
+let ecats=[];
+const allCats=()=>{const s=new Set(CATS_BASE);songs.forEach(x=>(x.categorias||[]).forEach(c=>s.add(c)));ecats.forEach(c=>s.add(c));return[...s]};
+function renderCats(){$('e-cats').innerHTML=allCats().map(c=>`<button class="chip${ecats.includes(c)?' on':''}" onclick="togCat(this.dataset.c)" data-c="${esc(c).replace(/"/g,'&quot;')}">${esc(c)}</button>`).join('')}
+function togCat(c){ecats=ecats.includes(c)?ecats.filter(x=>x!=c):[...ecats,c];renderCats()}
+function addCat(){const i=$('e-nc'),n=i.value.trim();if(!n)return;const ex=allCats().find(c=>c.toLowerCase()==n.toLowerCase());if(!ecats.includes(ex||n))ecats=[...ecats,ex||n];i.value='';renderCats()}
 function newSong(){cur=null;$('et').textContent='Nueva canción';$('e-t').value=$('e-a').value=$('e-c').value='';$('e-d').classList.add('hide');go('edit');prev()}
 function editSong(){$('et').textContent='Editar canción';$('e-t').value=cur.title||'';$('e-a').value=cur.artist||'';$('e-c').value=toEditable(cur.content);$('e-d').classList.remove('hide');go('edit');prev()}
 function prev(){tone=0;sheet($('e-p'),toInline($('e-c').value))}
 async function saveSong(){const t=$('e-t').value.trim();if(!t)return alert('Falta el título');
- const d={title:t,artist:$('e-a').value.trim(),content:toInline($('e-c').value),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const d={title:t,artist:$('e-a').value.trim(),content:toInline($('e-c').value),categorias:ecats,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
  try{cur?await db.collection('songs').doc(cur.id).update(d):await db.collection('songs').add(d);go('home')}catch(e){alert('Error al guardar: '+e.message)}}
 async function delSong(){if(confirm('¿Eliminar esta canción?')){await db.collection('songs').doc(cur.id).delete();cur=null;go('home')}}
 // ---- autoscroll ----
