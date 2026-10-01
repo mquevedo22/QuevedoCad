@@ -34,6 +34,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 #err{color:#ef4444;font-size:.9rem}
 .chip{border-radius:999px;padding:.3rem .8rem;font-size:.85rem}
 .chip.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.tg{font-size:.72rem;border:1px solid var(--bd);border-radius:999px;padding:.05rem .5rem;margin-left:.4rem;color:var(--mu)}
 </style></head><body>
 <header><span class="brand" onclick="go('home')">♪ Quevedo Songbook ♪ </span>
 <button onclick="go('home')">Canciones</button><button onclick="go('lists')">Repertorios</button>
@@ -43,7 +44,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 <p id="cfgwarn" class="hide mu">⚠ Falta pegar tu configuración de Firebase en este archivo (bloque <code>firebaseConfig</code>).</p>
 <div class="row"><input id="em" type="email" placeholder="Email" style="max-width:300px"><input id="pw" type="password" placeholder="Contraseña" style="max-width:300px" onkeydown="if(event.key=='Enter')login()"><button class="p" onclick="login()">Entrar</button></div><p id="err"></p></main>
 
-<main id="v-home" class="hide"><div class="row" style="margin-bottom:1rem"><input id="q" placeholder="Buscar por título, artista o letra…" oninput="renderSongs()" style="flex:1"><button class="p" onclick="newSong()">+ Nueva canción</button></div><div id="songs"></div></main>
+<main id="v-home" class="hide"><div class="row" style="margin-bottom:1rem"><input id="q" placeholder="Buscar por título, artista o letra…" oninput="renderSongs()" style="flex:1"><button class="p" onclick="newSong()">+ Nueva canción</button></div><div class="row" style="margin-bottom:.8rem"><div id="f-tags" class="row" style="flex:1"></div><button id="gb" onclick="togGroup()">Agrupar por etiqueta</button></div><div id="songs"></div></main>
 
 <section id="v-song" class="hide"><div class="tb">
 <button onclick="backFromSong()">←</button><span id="sn" style="font-weight:600"></span>
@@ -53,7 +54,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 <div class="g"><button id="pl" class="p" onclick="scToggle()">▶ Scroll</button><button onclick="scSpd(-1)" title="Más lento">−</button><span class="v" id="sv"></span><button onclick="scSpd(1)" title="Más rápido">+</button></div>
 <div class="g hide" id="pn"><button onclick="nav(-1)">⏮</button><button onclick="nav(1)">⏭</button></div>
 <button class="sp" onclick="editSong()">Editar</button></div>
-<main><h2 id="st" style="margin:.2rem 0"></h2><div class="mu" id="sa"></div><div id="sheet"></div></main></section>
+<main><h2 id="st" style="margin:.2rem 0"></h2><div class="mu" id="sa"></div><div id="stg" class="row" style="margin:.4rem 0"></div><div id="sheet"></div></main></section>
 
 <main id="v-edit" class="hide"><h2 id="et">Nueva canción</h2>
 <div class="row" style="margin-bottom:.6rem"><input id="e-t" placeholder="Título" style="flex:2"><input id="e-a" placeholder="Artista" style="flex:1"></div>
@@ -133,10 +134,22 @@ if(firebaseConfig.apiKey=='TU_API_KEY'){go('login');$('cfgwarn').classList.remov
   if(!VIEWS.slice(1).some(x=>!$('v-'+x).classList.contains('hide')))go('home')})}
 function login(){$('err').textContent='';auth?auth.signInWithEmailAndPassword($('em').value,$('pw').value).catch(e=>$('err').textContent='No se pudo entrar: '+e.code):0}
 // ---- canciones ----
-function renderSongs(){const q=$('q').value.toLowerCase(),f=songs.filter(s=>((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q));
+let ftags=[],grouped=false;
+const usedTags=()=>{const m={};songs.forEach(s=>(s.categorias||[]).forEach(c=>m[c]=(m[c]||0)+1));return m};
+function renderSongs(){const q=$('q').value.toLowerCase(),U=usedTags();ftags=ftags.filter(t=>U[t]);
+ const f=songs.filter(s=>((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q)&&ftags.every(t=>(s.categorias||[]).includes(t)));
+ const tags=allCats().filter(c=>U[c]);
+ $('f-tags').innerHTML=tags.map(c=>`<button class="chip${ftags.includes(c)?' on':''}" onclick="togF(this.dataset.c)" data-c="${esc(c).replace(/"/g,'&quot;')}">${esc(c)} (${U[c]})</button>`).join('')+(ftags.length?'<button class="chip" onclick="clrF()">✕ Quitar filtros</button>':'');
+ $('gb').textContent=grouped?'Ver como lista':'Agrupar por etiqueta';$('gb').classList.toggle('p',grouped);
+ const item=s=>`<div class="item" onclick="openSong('${s.id}')"><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span>${(s.categorias||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}</div></div>`;
+ let h;if(!grouped||ftags.length)h=f.map(item).join('');else{const g=tags.map(c=>[c,f.filter(s=>(s.categorias||[]).includes(c))]),n=f.filter(s=>!(s.categorias||[]).length);if(n.length)g.push(['Sin etiqueta',n]);
+  h=g.filter(x=>x[1].length).map(([c,l])=>`<div class="lab">${esc(c)} <span class="mu">(${l.length})</span></div>`+l.map(item).join('')).join('')}
+ $('songs').innerHTML=h||'<p class="mu">No hay canciones.</p>'}
+const togF=c=>{ftags=ftags.includes(c)?ftags.filter(x=>x!=c):[...ftags,c];renderSongs()},clrF=()=>{ftags=[];renderSongs()},togGroup=()=>{grouped=!grouped;renderSongs()};            
+function renderSongsOld(){const q=$('q').value.toLowerCase(),f=songs.filter(s=>((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q));
  $('songs').innerHTML=f.map(s=>`<div class="item" onclick="openSong('${s.id}')"><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span></div></div>`).join('')||'<p class="mu">No hay canciones.</p>'}
 function openSong(id,lid){cur=songs.find(s=>s.id==id);curList=lid||null;tone=0;go('song');drawSong()}
-function drawSong(){if(!cur)return;cur=songs.find(s=>s.id==cur.id)||cur;$('sn').textContent=cur.title;$('st').textContent=cur.title;$('sa').textContent=cur.artist||'';
+function drawSong(){if(!cur)return;cur=songs.find(s=>s.id==cur.id)||cur;$('sn').textContent=cur.title;$('st').textContent=cur.title;$('sa').textContent=cur.artist||'';$('stg').innerHTML=(cur.categorias||[]).map(c=>`<span class="chip on">${esc(c)}</span>`).join('');
  $('tv').textContent=tone>0?'+'+tone:tone;$('nb').textContent=notation=='eu'?'Do Re Mi':'C D E';$('sv').textContent=SPD[sc.l];$('sheet').style.fontSize=size+'px';
  $('pn').classList.toggle('hide',!curList);sheet($('sheet'),cur.content)}
 const tn=d=>{tone+=d;drawSong()},fs=d=>{size=Math.min(34,Math.max(11,size+d*2));drawSong()};
