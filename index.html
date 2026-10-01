@@ -145,7 +145,7 @@ function backFromSong(){curList?openList(curList):go('home')}
 function nav(d){const l=lists.find(x=>x.id==curList),i=l.songIds.indexOf(cur.id),n=l.songIds[i+d];if(n)openSong(n,curList)}
 // ---- editor ----
             // ---- categorías ----
-const CATS_BASE=['Entrada','Gloria','Salmo','Aleluya','Ofertorio','Santo','Cordero','Comunión','Final'];
+const CATS_BASE=['Entrada','Gloria','Salmo','Aleluya','Ofertorio','Santo','Maria','Comunión','Final'];
 let ecats=[];
 const allCats=()=>{const s=new Set(CATS_BASE);songs.forEach(x=>(x.categorias||[]).forEach(c=>s.add(c)));ecats.forEach(c=>s.add(c));return[...s]};
 function renderCats(){$('e-cats').innerHTML=allCats().map(c=>`<button class="chip${ecats.includes(c)?' on':''}" onclick="togCat(this.dataset.c)" data-c="${esc(c).replace(/"/g,'&quot;')}">${esc(c)}</button>`).join('')}
