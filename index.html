@@ -86,16 +86,18 @@ setTheme(localStorage.theme||(matchMedia('(prefers-color-scheme: light)').matche
 // ---- acordes ----
 const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],EU=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
 const BASE={C:0,D:2,E:4,F:5,G:7,A:9,B:11,Do:0,Re:2,Mi:4,Fa:5,Sol:7,La:9,Si:11};
-const NOTE='(?:SOL|Sol|DO|Do|RE|Re|MI|Mi|FA|Fa|LA|La|SI|Si|[A-G])(?:#|b|♯|♭)?';
+const NOTE='(?:SOL|Sol|sol|DO|Do|do|RE|Re|re|MI|Mi|mi|FA|Fa|fa|LA|La|la|SI|Si|si|[A-G])(?:#|b|♯|♭)?';
 const QUAL='(?:[Mm]aj|[Mm]in|[Dd]im|[Aa]ug|[Ss]us|[Aa]dd|[Aa]lt|m|M|º|°|ø|Δ|\\+|-|\\d|#|b|♯|♭|\\(|\\)|,|\\*|/\\d)*';
 const CRE=new RegExp('^'+NOTE+QUAL+'(?:/'+NOTE+')?[.,;:]*$'),BR=new RegExp('/(?='+NOTE+')');
-const NEU=/^(\(?[xX]\d+\)?|[|‖:%]+|[-–—.]+|\/+|(?:intro|estribillo|puente|solo|coda|fin|final|bis|riff|verso|coro|estrofa|outro|interludio|capo)\d*:?)$/i;
+const NEU=/^(\(?[xX]\d+\)?|[+\-]?\d+[+\-]?|[|‖:%]+|[-–—.]+|\/+|(?:intro|estribillo|puente|solo|coda|fin|final|bis|riff|verso|coro|estrofa|outro|interludio|capo)\d*:?)$/i;
 const isChord=t=>CRE.test(t),isChordLine=l=>{const k=l.trim().split(/\s+/);return l.trim()!==''&&k.some(isChord)&&k.every(t=>isChord(t)||NEU.test(t))};
-function rdNote(s){if(/^Fa(dd|ug|lt)/.test(s))return{i:5,n:1};const m=s.match(/^(SOL|Sol|DO|Do|RE|Re|MI|Mi|FA|Fa|LA|La|SI|Si|[A-G])(#|b|♯|♭)?/),w=m[1].length>1?m[1][0]+m[1].slice(1).toLowerCase():m[1],a=m[2];
+function rdNote(s){if(/^Fa(dd|ug|lt)/.test(s))return{i:5,n:1};const m=s.match(/^(SOL|Sol|sol|DO|Do|do|RE|Re|re|MI|Mi|mi|FA|Fa|fa|LA|La|la|SI|Si|si|[A-G])(#|b|♯|♭)?/),w=m[1].length>1?m[1][0].toUpperCase()+m[1].slice(1).toLowerCase():m[1],a=m[2];
  return{i:(BASE[w]+(a=='#'||a=='♯'?1:a=='b'||a=='♭'?-1:0)+12)%12,n:m[0].length}}
 const nm=i=>(notation=='eu'?EU:SH)[((i%12)+12)%12];
-function conv(ch){const r=rdNote(ch);let rest=ch.slice(r.n),bass='';const s=rest.search(BR);
- if(s>=0){const b=rdNote(rest.slice(s+1));bass='/'+nm(b.i+tone)+rest.slice(s+1+b.n);rest=rest.slice(0,s)}return nm(r.i+tone)+rest+bass}
+function conv(ch){const r=rdNote(ch),low=/^(sol|do|re|mi|fa|la|si)/.test(ch);let rest=ch.slice(r.n),bass='';const s=rest.search(BR);
+ if(s>=0){const b=rdNote(rest.slice(s+1));bass='/'+nm(b.i+tone)+rest.slice(s+1+b.n);rest=rest.slice(0,s)}
+ if(rest=='M')rest='';else if(low&&!/^m/i.test(rest))rest='m'+rest;
+ return nm(r.i+tone)+rest+bass}
 const convAny=t=>t.split(/([\s|–—-]+)/).map(p=>isChord(p)?conv(p):p).join(''),fmt=c=>isChord(c)?conv(c):convAny(c);
 const TOK=/\[([^\]]+)\]/g;
 function split(line){let plain='',pos=[],p=0,m;TOK.lastIndex=0;while((m=TOK.exec(line))){plain+=line.slice(p,m.index);
