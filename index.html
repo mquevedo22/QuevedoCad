@@ -41,6 +41,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 .modal{position:fixed;inset:0;background:#0008;z-index:50;display:flex;justify-content:center;padding-top:8vh}
 .box{background:var(--hd);border:1px solid var(--bd);border-radius:12px;width:min(480px,92vw);max-height:70vh;overflow:auto;padding:1rem;align-self:flex-start}
 #err{color:#ef4444;font-size:.9rem}
+  #off{background:#FAEEDA;color:#633806;text-align:center;font-size:.85rem;padding:.4rem .8rem}
 .chip{border-radius:999px;padding:.3rem .8rem;font-size:.85rem}
 .chip.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
 .tg{font-size:.72rem;border:1px solid var(--bd);border-radius:999px;padding:.05rem .5rem;margin-left:.4rem;color:var(--mu)}
@@ -48,6 +49,7 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 <header><span class="brand" onclick="go('home')">♪ Quevedo Songbook ♪ </span>
 <button onclick="go('home')">Canciones</button><button onclick="go('lists')">Repertorios</button>
 <button id="th" onclick="toggleTheme()" title="Modo claro/oscuro">☀</button><button id="out" class="hide" onclick="auth.signOut()">Salir</button></header>
+  <div id="off" class="hide">Sin conexión · puedes leer y tocar las canciones; los cambios se enviarán cuando vuelva internet</div>
 
 <main id="v-login" class="hide"><h2>Acceso</h2>
 <p id="cfgwarn" class="hide mu">⚠ Falta pegar tu configuración de Firebase en este archivo (bloque <code>firebaseConfig</code>).</p>
@@ -178,9 +180,14 @@ function editSong(){$('et').textContent='Editar canción';$('e-t').value=cur.tit
 function prev(){tone=0;sheet($('e-p'),toInline($('e-c').value))}
 async function saveSong(){const t=$('e-t').value.trim();if(!t)return alert('Falta el título');
    const d={title:t,artist:$('e-a').value.trim(),content:toInline($('e-c').value),categorias:ecats,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
- try{cur?await db.collection('songs').doc(cur.id).update(d):await db.collection('songs').add(d);go('home')}catch(e){alert('Error al guardar: '+e.message)}}
-async function delSong(){if(confirm('¿Eliminar esta canción?')){await db.collection('songs').doc(cur.id).delete();cur=null;go('home')}}
-// ---- autoscroll ----
+ try{await W(cur?db.collection('songs').doc(cur.id).update(d):db.collection('songs').add(d));go('home')}catch(e){}}
+async function delSong(){if(confirm('¿Eliminar esta canción?')){await W(db.collection('songs').doc(cur.id).delete());cur=null;go('home')}}
+// ---- conexión ----
+function toast(m){let t=$('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:.6rem 1rem;border-radius:10px;font-size:.9rem;z-index:60;max-width:90vw;text-align:center';document.body.appendChild(t)}t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
+const W=async p=>{let t;try{const r=await Promise.race([p.then(()=>1),new Promise(s=>{t=setTimeout(()=>s(0),2500)})]);if(!r){toast('Sin conexión: se guardará cuando vuelva internet');p.catch(e=>alert('No se pudo guardar: '+e.message))}return r}catch(e){alert('No se pudo guardar: '+(e.code=='permission-denied'?'no tienes permiso para modificar':e.message));throw e}finally{clearTimeout(t)}};
+const net=()=>$('off').classList.toggle('hide',navigator.onLine);
+addEventListener('online',net);addEventListener('offline',net);net();
+  // ---- autoscroll ----
 function scToggle(){sc.on?stopSc():startSc()}
 function startSc(){sc.on=true;sc.pos=scrollY;sc.last=performance.now();sc.set=scrollY;$('pl').textContent='❚❚ Pausa';requestAnimationFrame(loop)}
 function stopSc(){sc.on=false;const b=$('pl');if(b)b.textContent='▶ Scroll'}
@@ -191,13 +198,13 @@ addEventListener('keydown',e=>{if($('v-song').classList.contains('hide')||/INPUT
  if(e.key==' '){e.preventDefault();scToggle()}if(e.key=='+')scSpd(1);if(e.key=='-')scSpd(-1)});
 // ---- repertorios ----
 function renderLists(){$('lists').innerHTML=lists.map(l=>`<div class="item" onclick="openList('${l.id}')"><div><b>${esc(l.name)}</b><span class="mu">${(l.songIds||[]).length} canciones</span></div></div>`).join('')||'<p class="mu">Aún no hay repertorios.</p>'}
-async function newList(){const n=prompt('Nombre del repertorio:');if(n&&n.trim()){const r=await db.collection('setlists').add({name:n.trim(),songIds:[]});openList(r.id)}}
+async function newList(){const n=prompt('Nombre del repertorio:');if(n&&n.trim()){const r=db.collection('setlists').doc();await W(r.set({name:n.trim(),songIds:[]}));openList(r.id)}}
 function openList(id){curList=id;go('list')}
 let sortable;function renderList(){const l=lists.find(x=>x.id==curList);if(!l)return go('lists');$('ln').textContent=l.name;
  $('ls').innerHTML=(l.songIds||[]).map(id=>songs.find(s=>s.id==id)).filter(Boolean).map(s=>`<div class="item" data-id="${s.id}" onclick="openSong('${s.id}','${l.id}')"><span class="h" onclick="event.stopPropagation()">☰</span><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span></div><button class="sp d" onclick="event.stopPropagation();rmSong('${s.id}')">Quitar</button></div>`).join('')||'<p class="mu">Repertorio vacío. Usa “Añadir canción”.</p>';
  sortable&&sortable.destroy();sortable=new Sortable($('ls'),{handle:'.h',animation:150,onEnd:()=>db.collection('setlists').doc(l.id).update({songIds:[...$('ls').children].map(e=>e.dataset.id).filter(Boolean)})})}
 const rmSong=id=>db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayRemove(id)});
-async function delList(){if(confirm('¿Eliminar este repertorio?')){await db.collection('setlists').doc(curList).delete();go('lists')}}
+async function delList(){if(confirm('¿Eliminar este repertorio?')){await W(db.collection('setlists').doc(curList).delete());go('lists')}}
 let ptags=[];
 function renderPicker(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[],av=songs.filter(s=>!have.includes(s.id)),U={};
  av.forEach(s=>(s.categorias||[]).forEach(c=>U[c]=(U[c]||0)+1));ptags=ptags.filter(t=>U[t]);
@@ -207,5 +214,5 @@ const togP=c=>{ptags=ptags.includes(c)?ptags.filter(x=>x!=c):[...ptags,c];render
 function openPicker(){ptags=[];$('pk').classList.remove('hide');$('pq').value='';renderPicker();$('pq').focus()}
 function renderPickerOld(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[];
  $('pr').innerHTML=songs.filter(s=>!have.includes(s.id)&&((s.title||'')+(s.artist||'')+(s.content||'')).toLowerCase().includes(q)).map(s=>`<div class="item" onclick="addSong('${s.id}')"><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span></div></div>`).join('')||'<p class="mu">Sin resultados.</p>'}
-async function addSong(id){await db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayUnion(id)});$('pk').classList.add('hide')}
+async function addSong(id){await W(db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayUnion(id)}));$('pk').classList.add('hide')}
 </script></body></html>
