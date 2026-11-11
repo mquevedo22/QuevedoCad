@@ -101,7 +101,7 @@ function setTheme(t){document.documentElement.dataset.theme=t;localStorage.theme
 function toggleTheme(){setTheme(document.documentElement.dataset.theme=='dark'?'light':'dark')}
 setTheme(localStorage.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
 // ---- acordes ----
-const SH=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],EU=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+const SH=['C','C#','D','D#','E','F','F#','G','G#','A','Bb','B'],EU=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','Sib','Si'];
 const BASE={C:0,D:2,E:4,F:5,G:7,A:9,B:11,Do:0,Re:2,Mi:4,Fa:5,Sol:7,La:9,Si:11};
 const NOTE='(?:SOL|Sol|sol|DO|Do|do|RE|Re|re|MI|Mi|mi|FA|Fa|fa|LA|La|la|SI|Si|si|[A-G])(?:#|b|♯|♭)?';
 const QUAL='(?:[Mm]aj|[Mm]in|[Dd]im|[Aa]ug|[Ss]us|[Aa]dd|[Aa]lt|m|M|º|°|ø|Δ|\\+|-|\\d|#|b|♯|♭|\\(|\\)|,|\\*|/\\d)*';
