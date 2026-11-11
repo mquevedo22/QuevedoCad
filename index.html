@@ -77,7 +77,8 @@ textarea{font-family:'JetBrains Mono',monospace;font-size:14px;min-height:260px;
 
 <main id="v-lists" class="hide"><div class="row" style="margin-bottom:1rem"><h2 style="margin:0">Repertorios</h2><button class="p sp" onclick="newList()">+ Nuevo repertorio</button></div><div id="lists"></div></main>
 
-<main id="v-list" class="hide"><div class="row" style="margin-bottom:1rem"><button onclick="go('lists')">←</button><h2 id="ln" style="margin:0"></h2><button class="p sp" onclick="openPicker()">+ Añadir canción</button><button class="d" onclick="delList()">Eliminar</button></div><p class="mu">Arrastra ☰ para cambiar el orden. Pulsa una canción para verla.</p><div id="ls"></div></main>
+<main id="v-list" class="hide"><div class="row" style="margin-bottom:1rem"><button onclick="go('lists')">←</button><h2 id="ln" style="margin:0"></h2><button class="p sp" onclick="openPicker()">+ Añadir canción</button><button onclick="renameList()">Renombrar</button><button onclick="exportPdf()">Exportar PDF</button><button class="d" onclick="delList()">Eliminar</button></div><p class="mu">Arrastra ☰ para cambiar el orden. Pulsa una canción para verla.</p><div id="ls"></div></main>
+
 
 <div id="pk" class="modal hide" onclick="if(event.target==this)this.classList.add('hide')"><div class="box"><input id="pq" placeholder="Buscar canción…" oninput="renderPicker()"><div id="pf" class="row" style="margin-top:.6rem"></div><div id="pr" style="margin-top:.6rem"></div></div></div>
 
