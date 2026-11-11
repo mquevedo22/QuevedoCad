@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root[data-theme=dark]{--bg:#0b0f19;--hd:#0f172a;--card:#111a2e;--bd:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--ac:#6366f1;--acx:#fff;--ch:#38bdf8}
 :root[data-theme=light]{--bg:#fff;--hd:#fff;--card:#f6f6f6;--bd:#e3e3e3;--tx:#222;--mu:#6b6b6b;--ac:#ef4e23;--acx:#fff;--ch:#1565c0}
@@ -205,6 +206,7 @@ let sortable;function renderList(){const l=lists.find(x=>x.id==curList);if(!l)re
  $('ls').innerHTML=(l.songIds||[]).map(id=>songs.find(s=>s.id==id)).filter(Boolean).map(s=>`<div class="item" data-id="${s.id}" onclick="openSong('${s.id}','${l.id}')"><span class="h" onclick="event.stopPropagation()">☰</span><div><b>${esc(s.title)}</b><span class="mu">${esc(s.artist)}</span></div><button class="sp d" onclick="event.stopPropagation();rmSong('${s.id}')">Quitar</button></div>`).join('')||'<p class="mu">Repertorio vacío. Usa “Añadir canción”.</p>';
  sortable&&sortable.destroy();sortable=new Sortable($('ls'),{handle:'.h',animation:150,onEnd:()=>db.collection('setlists').doc(l.id).update({songIds:[...$('ls').children].map(e=>e.dataset.id).filter(Boolean)})})}
 const rmSong=id=>db.collection('setlists').doc(curList).update({songIds:firebase.firestore.FieldValue.arrayRemove(id)});
+  function renameList(){const l=lists.find(x=>x.id==curList);if(!l)return;const n=prompt('Nuevo nombre del repertorio:',l.name);if(!n||!n.trim()||n.trim()==l.name)return;db.collection('setlists').doc(curList).update({name:n.trim()}).catch(e=>alert('No se pudo cambiar el nombre: '+(e.code=='permission-denied'?'no tienes permiso para modificar':e.message)))}
 async function delList(){if(confirm('¿Eliminar este repertorio?')){await W(db.collection('setlists').doc(curList).delete());go('lists')}}
 let ptags=[];
 function renderPicker(){const q=$('pq').value.toLowerCase(),l=lists.find(x=>x.id==curList),have=l.songIds||[],av=songs.filter(s=>!have.includes(s.id)),U={};
